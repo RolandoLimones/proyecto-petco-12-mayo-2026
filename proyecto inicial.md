@@ -1,4 +1,4 @@
-Actúa como un administrador de base de datos: proyecto tienda petco, que entidades se necesitan para su gestión
+Actúa como un administrador de base de datos: proyecto tienda petco, que entidades se necesitan para su gestión<br>
 Para una **tienda Petco**, aquí están las entidades esenciales para su sistema de gestión:Estas son las **12 entidades** del modelo, agrupadas por dominio:
 <img width="658" height="613" alt="image" src="https://github.com/user-attachments/assets/8932e1a3-71b4-400a-8056-d22bbef3e8c9" /><br>
 
