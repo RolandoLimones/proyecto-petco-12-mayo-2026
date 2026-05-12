@@ -37,3 +37,5 @@ Algunas entidades adicionales que podrías considerar en una fase posterior son 
 <img width="807" height="379" alt="image" src="https://github.com/user-attachments/assets/84cdcad5-e370-49d2-b374-777a50d6ea81" /><br>
 <img width="804" height="440" alt="image" src="https://github.com/user-attachments/assets/a9631e8e-599d-4eba-a98e-b127544ce00f" /><br>
 <img width="802" height="339" alt="image" src="https://github.com/user-attachments/assets/a26ec75e-56be-4547-8fb8-13f10d474f78" /><br>
+
+de acuerdo a tu respuesta anterior puedes generar un script en sql para descargar con el nombre de bdpetco.sql para las entidades con sus relaciones
