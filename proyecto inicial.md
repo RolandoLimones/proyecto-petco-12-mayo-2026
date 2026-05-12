@@ -28,7 +28,7 @@ Algunas entidades adicionales que podrías considerar en una fase posterior son 
 <img width="806" height="418" alt="image" src="https://github.com/user-attachments/assets/3d07c719-2b17-45d6-909f-8afe221d76b3" /><br>
 <img width="806" height="457" alt="image" src="https://github.com/user-attachments/assets/25e41da5-282b-45ea-aea2-ca519aa7aa54" /><br>
 <img width="805" height="309" alt="image" src="https://github.com/user-attachments/assets/2537ecd4-0933-4701-9755-34997fec3857" /><br>
-<img width="806" height="387" alt="image" src="https://github.com/user-attachments/assets/4a9d708d-1719-433f-87bb-ebf339ffe286" /><br>
+<img width="803" height="381" alt="image" src="https://github.com/user-attachments/assets/b659fef2-6558-473d-9beb-9215a4c902ae" /><br>
 <img width="805" height="486" alt="image" src="https://github.com/user-attachments/assets/ef59a04b-ff15-4b18-ae4d-7e9e2fe502c2" /><br>
 <img width="804" height="455" alt="image" src="https://github.com/user-attachments/assets/8dc16d68-ed3e-44ff-a68f-05c25cf16dd8" /><br>
 <img width="804" height="416" alt="image" src="https://github.com/user-attachments/assets/012bc336-be6c-40ec-ad2a-be23a25cc937" /><br>
