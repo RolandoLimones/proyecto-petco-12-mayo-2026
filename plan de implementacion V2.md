@@ -411,7 +411,6 @@ flutter:
 ### 4.1 Proyecto Firebase
 - Crear proyecto en consola de Firebase con nombre `petco-app`.
 - No habilitar Google Analytics (proyecto personal).
-- Plan: Spark (gratuito, límites suficientes para desarrollo).
 
 ### 4.2 Aplicaciones registradas
 - **Android:** `com.petco.app` (crear archivo `android/app/google-services.json`).
