@@ -1,1053 +1,600 @@
-# Plan de Implementación Extendido – App Petco (Flutter + Firebase)
-
-## Índice
-1. [Arquitectura y Filosofía de Diseño](#1-arquitectura-y-filosofía-de-diseño)
-2. [Estructura de Carpetas y Archivos – Desglose Completo](#2-estructura-de-carpetas-y-archivos-–-desglose-completo)
-3. [Dependencias y Paquetes – Especificación Técnica](#3-dependencias-y-paquetes-–-especificación-técnica)
-4. [Configuración de Firebase – Firestore, Auth, Storage, Functions](#4-configuración-de-firebase-–-firestore-auth-storage-functions)
-5. [Modelado de Datos en Firestore – Colecciones, Subcolecciones, Referencias](#5-modelado-de-datos-en-firestore-–-colecciones-subcolecciones-referencias)
-6. [Reglas de Seguridad de Firestore – Explicación Lógica Completa](#6-reglas-de-seguridad-de-firestore-–-explicación-lógica-completa)
-7. [Índices Compuestos en Firestore – Lista Necesaria](#7-índices-compuestos-en-firestore-–-lista-necesaria)
-8. [Cloud Functions – Triggers, Propósitos y Lógica de Negocio](#8-cloud-functions-–-triggers-propósitos-y-lógica-de-negocio)
-9. [Gestión de Estado con Riverpod – Providers Detallados](#9-gestión-de-estado-con-riverpod-–-providers-detallados)
-10. [Navegación y Rutas – GoRouter Configuración](#10-navegación-y-rutas-–-gorouter-configuración)
-11. [Diseño UX/UI – Especificaciones Completas de Glassmorphism, Colores, Tipografía, Animaciones](#11-diseño-uxui-–-especificaciones-completas-de-glassmorphism-colores-tipografía-animaciones)
-12. [Pantallas y Flujos – Explicación Paso a Paso de Cada Interfaz](#12-pantallas-y-flujos-–-explicación-paso-a-paso-de-cada-interfaz)
-    - 12.1 Autenticación (Login/Registro)
-    - 12.2 Home (Dashboard principal)
-    - 12.3 Catálogo de Productos y Búsqueda
-    - 12.4 Detalle de Producto y Carrito de Compras
-    - 12.5 Proceso de Checkout y Pedidos
-    - 12.6 Gestión de Mascotas
-    - 12.7 Agenda de Citas Veterinarias
-    - 12.8 Perfil de Usuario y Configuración
-    - 12.9 Historial de Pedidos y Detalles
-    - 12.10 Sucursales y Mapa
-13. [Manejo de Imágenes – Carga, Optimización y Almacenamiento en Firebase Storage](#13-manejo-de-imágenes-–-carga-optimización-y-almacenamiento-en-firebase-storage)
-14. [Persistencia Local – SharedPreferences para Carrito y Preferencias](#14-persistencia-local-–-sharedpreferences-para-carrito-y-preferencias)
-15. [Manejo de Errores y Estados de Carga – Estrategia Global](#15-manejo-de-errores-y-estados-de-carga-–-estrategia-global)
-16. [Pruebas Manuales – Escenarios y Casos de Uso a Verificar](#16-pruebas-manuales-–-escenarios-y-casos-de-uso-a-verificar)
-17. [Configuración Multiplataforma – Android, iOS, Web, Windows](#17-configuración-multiplataforma-–-android-ios-web-windows)
-18. [Despliegue Local y Variables de Entorno](#18-despliegue-local-y-variables-de-entorno)
-19. [Lista de Verificación Final (Checklist)](#19-lista-de-verificación-final-checklist)
+A continuación se presenta el documento técnico-visual completo para la implementación de la aplicación **PetcoGestionApp**, desarrollada con **Flutter** multiplataforma (Android, iOS, Web, Windows) utilizando **Antigravity** como entorno de desarrollo principal. El documento está estructurado como una guía exhaustiva para que otra inteligencia artificial pueda construir el proyecto desde cero, sin asumir nada implícito y sin incluir código. Se describen todos los aspectos: diseño visual, arquitectura de archivos, flujos de navegación, integración con Firebase Firestore (proyecto en modo prueba), manejo de datos basado en las tablas SQL proporcionadas, experiencia de usuario, assets, dependencias conceptuales y mucho más.
 
 ---
 
-## 1. Arquitectura y Filosofía de Diseño
+## 1. Identidad visual y diseño general
 
-Se adopta una **arquitectura limpia (Clean Architecture)** con tres capas:
+La aplicación debe transmitir modernidad, limpieza y confianza, utilizando una paleta basada en **azul pastel** y **rojo pastel** como colores principales, complementados con efectos de **glassmorphism** (transparencias, desenfoques, bordes sutiles y sombras ligeras). El diseño debe adaptarse a móvil, web y escritorio manteniendo coherencia visual.
 
-- **Capa de datos (data):** Contiene modelos (con `fromJson`/`toJson`), repositorios concretos y fuentes de datos (Firestore, Storage, SharedPreferences). Se encarga de la comunicación con Firebase y el almacenamiento local.
-- **Capa de dominio (domain):** Contiene entidades de negocio (clases simples), interfaces de repositorios (contratos) y casos de uso (cada caso de uso es una clase con un método `execute`). Esta capa no depende de Flutter ni de Firebase, es pura lógica Dart.
-- **Capa de presentación (presentation):** Contiene screens, widgets, providers (Riverpod) y lógica de UI. Depende de la capa de dominio para invocar casos de uso.
+### 1.1 Paleta de colores exacta
+- **Azul pastel principal**: `#A3C6F2` (fondo de tarjetas, botones secundarios, acentos).
+- **Azul pastel oscuro** (para contraste): `#6EA8FE` (bordes, iconos activos, enlaces).
+- **Rojo pastel principal**: `#F9B5AC` (botones de acción principal, alertas, elementos destacados).
+- **Rojo pastel oscuro** (hover o presión): `#F48B7A` (estados de error o advertencia).
+- **Fondo general**: `#F4F7FC` (gris muy claro con ligero tono azulado).
+- **Fondo de elementos glassmorphism**: blanco con opacidad `0.65` y desenfoque `10px`.
+- **Texto principal**: `#1E2A3A` (gris azulado oscuro).
+- **Texto secundario**: `#5A6E7F` (gris azulado medio).
+- **Bordes y líneas divisorias**: `#D0DFF0` (muy sutil).
+- **Sombras**: `#A3C6F2` con opacidad `0.2` y desenfoque `12px`.
 
-Esta separación permite:
-- Testabilidad unitaria de la lógica de negocio.
-- Facilidad para cambiar el origen de datos (por ejemplo, reemplazar Firestore por una API REST).
-- Reutilización de casos de uso en diferentes pantallas.
+### 1.2 Efectos glassmorphism (aplicar en tarjetas, menús laterales, barras inferiores)
+- **Fondo**: blanco o color claro con `opacidad 0.7`.
+- **Desenfoque (blur)**: `10px` a `16px` dependiendo del elemento.
+- **Borde**: `1px` sólido con color blanco semi-transparente (`#FFFFFF 0.3`).
+- **Sombra exterior**: ligera, con desplazamiento vertical `4px` y radio `20px`.
+- **Esquinas redondeadas**: `16px` para tarjetas grandes, `24px` para modales, `8px` para botones.
 
-**Principios aplicados:**
-- Inyección de dependencias mediante Riverpod (providers que proveen instancias de repositorios y casos de uso).
-- Programación reactiva: los providers notifican a los widgets cuando el estado cambia.
-- Manejo de estado local (dentro de una pantalla) con `StateProvider` o `StateNotifierProvider`; estado global compartido con `Provider` o `FutureProvider`.
+### 1.3 Tipografía
+- **Familia principal**: `Poppins` (moderna, redondeada, legible) o `Inter` como alternativa.
+- **Pesos**: `Regular (400)` para cuerpo de texto, `Medium (500)` para subtítulos, `SemiBold (600)` para títulos, `Bold (700)` para botones y encabezados principales.
+- **Tamaños base**: 
+  - Texto pequeño: `12px`
+  - Texto normal: `14px`
+  - Subtítulos: `18px`
+  - Títulos de sección: `22px`
+  - Títulos de pantalla: `28px`
+
+### 1.4 Espaciado y layout
+- **Grid base**: 8 píxeles (márgenes, paddings, gaps).
+- **Márgenes laterales en móvil**: `16px`.
+- **Márgenes laterales en web/escritorio**: `24px` (con un ancho máximo de contenido de `1200px` centrado).
+- **Separación entre tarjetas**: `16px`.
+- **Iconos**: tamaño `20px` o `24px`, con trazo fino (stroke 1.5) y esquinas redondeadas.
+
+### 1.5 Ejemplo visual por pantalla (descripción sin código)
+
+**Pantalla principal (home)**:
+- Barra superior con logo a la izquierda (fondo glassmorphism), buscador centrado o a la derecha (campo con borde redondeado y efecto de desenfoque), icono de carrito y perfil.
+- Carrusel de banners promocionales con imágenes de mascotas, usando indicadores circulares en azul pastel.
+- Grid de categorías (3 columnas en móvil, 6 en web) con iconos y texto bajo cada una.
+- Sección "Productos destacados": lista horizontal desplazable, cada tarjeta muestra imagen, nombre, precio, botón de favorito (corazón rojo pastel) y botón "Agregar" (azul pastel).
+- Sección "Mascotas en adopción/venta": similar a productos pero con información de especie, edad y sexo.
+- Barra inferior (para móvil) con 5 iconos: Inicio, Catálogo (mascotas+productos), Carrito, Citas, Perfil.
+
+**Pantalla de detalle de producto**:
+- Imagen grande con fondo glassmorphism y sombra.
+- Título, precio, descripción, selector de cantidad (botones + y - con fondo rojo pastel suave).
+- Botón principal "Añadir al carrito" (fondo rojo pastel, texto blanco, esquinas redondeadas de 30px, sombra ligera).
+- Sección "Especificaciones" con etiquetas azul pastel.
+- Botón de favoritos (corazón animable).
+
+**Pantalla de citas**:
+- Calendario visual (estilo semana o mes) con fechas destacadas en rojo pastel.
+- Lista de citas agendadas (cada una como tarjeta glassmorphism mostrando servicio, mascota, fecha, hora y estado).
+- Botón flotante (FAB) redondo con icono de más (rojo pastel) para crear nueva cita.
+- Formulario de nueva cita: campos desplegables (servicio, mascota, sucursal), selector de fecha y hora (con interfaz nativa de cada plataforma), campo de notas, botón "Agendar" (azul pastel).
+
+**Pantalla de carrito**:
+- Lista de productos con imagen, nombre, precio unitario, cantidad modificable (+/-), botón eliminar (basurero).
+- Resumen de compra (subtotal, impuestos, descuento, total) con texto alineado a la derecha.
+- Botón "Proceder al pago" (rojo pastel) que lleva a la pantalla de selección de método de pago (simulado, sin pasarela real).
+- Botón "Seguir comprando" (azul pastel con borde).
+
+**Todos los formularios** deben tener campos con bordes redondeados de 12px, fondo blanco semi-transparente, etiquetas flotantes o dentro del campo, y mensajes de error en rojo pastel oscuro debajo del campo.
 
 ---
 
-## 2. Estructura de Carpetas y Archivos – Desglose Completo
+## 2. Arquitectura de carpetas del proyecto Flutter
 
-A continuación se detalla **cada archivo** con su responsabilidad exacta.
+Estructura completa del proyecto (explicación fuera de la lista). **Nota**: la siguiente es solo la jerarquía de carpetas y archivos, sin explicaciones dentro de ella.
 
 ```
 lib/
-├── main.dart
-│   └── Función main() que llama a runApp() envolviendo la app con ProviderScope (Riverpod) y ejecuta la inicialización de Firebase (usando async/await y Firebase.initializeApp).
-│
-├── app/
-│   ├── app.dart
-│   │   └── Widget MyApp (stateless). Configura MaterialApp.router con:
-│   │       - routerConfig (GoRouter)
-│   │       - theme: lightTheme definido en theme.dart
-│   │       - debugShowCheckedModeBanner: false
-│   │       - scaffoldMessengerKey para mostrar SnackBars globales
-│   │       - builder: envolver con un widget que maneje la conexión a internet (ConnectivityObserver)
-│   ├── routes.dart
-│   │   └── Definición de todas las rutas como constantes (e.g. '/login', '/home', '/productos/:id')
-│   ├── theme.dart
-│   │   └── LightTheme definido: 
-│   │       - colorScheme (Material 3) con primary = azul pastel #A3C6FF, secondary = rojo pastel #FFB3B3
-│   │       - elevatedButtonTheme, textTheme, cardTheme, etc. para aplicar glassmorphism por defecto.
-│   └── constants.dart
-│       └── Constantes globales: 
-│           - firestoreCollectionNames (clientes, productos, etc.)
-│           - storagePaths (productos/, mascotas/, etc.)
-│           - límites de paginación (10 productos por página)
-│           - tiempos de caché (por ejemplo, 5 minutos para productos)
-│
-├── core/
-│   ├── utils/
-│   │   ├── formatters.dart
-│   │   │   └── Funciones: formatearPrecio (moneda CLP, MXN, etc.), formatearFecha (dd/MM/yyyy), formatearHora (HH:mm)
-│   │   ├── validators.dart
-│   │   │   └── Validadores: emailValido, telefonoValido, fechaNacimientoValida, nombreNoVacio, etc.
-│   │   ├── helpers.dart
-│   │   │   └── Funciones misceláneas: mostrarSnackBar (usa scaffoldMessengerKey), calcularSubtotal, calcularTotalConImpuestos, generarIdLocal (para carrito)
-│   │   ├── logger.dart
-│   │   │   └── Configuración de logger (usa `logger` package) con niveles: debug, info, warning, error. Solo imprime en modo debug.
-│   │   └── connectivity.dart
-│   │       └── Función que retorna un Stream<bool> de conectividad usando ConnectivityPlus, y un provider de estado de conexión.
-│   ├── exceptions/
-│   │   └── app_exceptions.dart
-│   │       └── Jerarquía de excepciones: 
-│   │           - AppException (base)
-│   │           - AuthException (subclases: InvalidEmail, WrongPassword, UserNotFound)
-│   │           - FirestoreException (subclases: NetworkError, PermissionDenied, NotFound)
-│   │           - StockException (StockInsuficiente)
-│   │           - CitaException (HorarioOcupado, MascotaNoEncontrada)
-│   └── services/
-│       ├── firebase_service.dart
-│       │   └── Clase FirebaseService con métodos estáticos: initialize() (llama a Firebase.initializeApp y configura opciones), getFirestore(), getAuth(), getStorage().
-│       ├── auth_service.dart
-│       │   └── Clase que envuelve FirebaseAuth: 
-│       │       - signInWithEmailAndPassword(email, password)
-│       │       - createUserWithEmailAndPassword(email, password)
-│       │       - sendPasswordResetEmail(email)
-│       │       - signOut()
-│       │       - currentUser (Stream<User?>)
-│       │       - updateProfile(displayName, photoURL)
-│       └── storage_service.dart
-│           └── Clase que envuelve FirebaseStorage:
-│               - uploadImage(file, path) → retorna URL de descarga
-│               - deleteImage(path)
-│               - compressImage (antes de subir, reduce calidad a 80% y redimensiona a 1024x1024)
-│
-├── data/
-│   ├── models/                  // Modelos de datos (con JSON serialization)
-│   │   ├── cliente_model.dart
-│   │   │   └── Clase ClienteModel con campos: id (String), nombre, email, telefono, direccion, fechaNacimiento (DateTime), fechaRegistro (DateTime), tipoMembresia (String), activo (bool), fotoUrl (String?).
-│   │   │       - fromFirestore(DocumentSnapshot) → ClienteModel
-│   │   │       - toFirestore() → Map<String, dynamic>
-│   │   ├── mascota_model.dart
-│   │   │   └── Clase MascotaModel: id, clienteId (String ref), nombre, especie, raza, sexo (enum: M, F, N), fechaNacimiento, pesoKg (double), fotoUrl, notasMedicas.
-│   │   ├── categoria_model.dart
-│   │   │   └── id, nombre, descripcion, categoriaPadreId (String? ref), imagenUrl, activo.
-│   │   ├── proveedor_model.dart
-│   │   ├── producto_model.dart
-│   │   │   └── id, categoriaId, proveedorId, nombre, descripcion, codigoBarras, precio, precioCosto, especieObjetivo (String), imagenUrl, activo, ventasTotales (int, opcional para ranking).
-│   │   ├── sucursal_model.dart
-│   │   │   └── id, nombre, direccion, ciudad, estado, telefono, horario, latitud, longitud, activo.
-│   │   ├── empleado_model.dart
-│   │   ├── pedido_model.dart
-│   │   │   └── id, clienteId, empleadoId?, sucursalId, fechaPedido (Timestamp), subtotal, impuesto, descuento, total, estado (enum: pendiente, pagado, enviado, entregado, cancelado), canal (enum: app, web, tienda), metodoPago.
-│   │   ├── detalle_pedido_model.dart
-│   │   │   └── id, pedidoId, productoId, cantidad, precioUnitario, descuento, subtotal.
-│   │   ├── servicio_model.dart
-│   │   ├── cita_model.dart
-│   │   │   └── id, clienteId, mascotaId, servicioId, empleadoId?, sucursalId, fechaHora (Timestamp), estado (pendiente, confirmada, completada, cancelada), precioCobrado, notas.
-│   │   └── inventario_model.dart
-│   │       └── id (autogenerado), productoId, sucursalId, cantidad, stockMinimo, stockMaximo, ultimaActualizacion.
-│   │
-│   ├── repositories/            // Implementación concreta de interfaces del dominio
-│   │   ├── auth_repository.dart
-│   │   │   └── Implementa IAuthRepository usando auth_service.dart y firestore para guardar/leer clientes.
-│   │   ├── cliente_repository.dart
-│   │   │   └── CRUD de clientes en Firestore, usando cliente_firestore.dart.
-│   │   ├── mascota_repository.dart
-│   │   ├── producto_repository.dart
-│   │   │   └── Métodos: getProductos(filtros, paginación), getProductoPorId, getProductosPorCategoria, buscarProductos(query).
-│   │   ├── pedido_repository.dart
-│   │   │   └── crearPedido (transacción que también actualiza inventario, se llama a Cloud Function mejor), getPedidosPorCliente, getPedidoDetalle.
-│   │   ├── cita_repository.dart
-│   │   ├── sucursal_repository.dart
-│   │   └── inventario_repository.dart
-│   │       └── verificarStock(sucursalId, productoId, cantidadRequerida), actualizarStock (solo admin o vía Cloud Function).
-│   │
-│   └── datasources/
-│       ├── firestore/
-│       │   ├── cliente_firestore.dart
-│       │   │   └── Métodos: getCliente(String uid), updateCliente(ClienteModel), createCliente(ClienteModel).
-│       │   ├── mascota_firestore.dart
-│       │   │   └── Métodos: getMascotasByCliente(String clienteId), createMascota, updateMascota, deleteMascota.
-│       │   ├── producto_firestore.dart
-│       │   │   └── Métodos con queries paginadas: getProductos con filtros (usando where, orderBy, limit, startAfter), getProductoById.
-│       │   ├── pedido_firestore.dart
-│       │   │   └── createPedido (escribe documento y subcolección detalles_pedido), getPedidosByCliente (ordenado por fecha descendente).
-│       │   ├── cita_firestore.dart
-│       │   │   └── createCita, getCitasByCliente, getCitasBySucursalAndFecha (para verificar disponibilidad), cancelarCita.
-│       │   ├── sucursal_firestore.dart
-│       │   │   └── getSucursales (con opción de activas), getSucursalById.
-│       │   └── inventario_firestore.dart
-│       │       └── getStock(productoId, sucursalId), updateStock (en transacción, pero mejor delegar a Cloud Function).
-│       └── local/               // Para persistencia offline (opcional con Hive)
-│           ├── carrito_local.dart
-│           │   └── Lee/escribe carrito en SharedPreferences (JSON).
-│           └── preferencias_local.dart
-│               └── Guarda sucursal favorita, último email usado, etc.
-│
-├── domain/
-│   ├── entities/                // Entidades simples (sin métodos de persistencia)
-│   │   ├── cliente.dart
-│   │   │   └── Clase Cliente con los mismos campos que el modelo pero sin fromJson/toJson. Incluye métodos de validación de dominio (e.g. esMayorDeEdad).
-│   │   ├── mascota.dart
-│   │   ├── producto.dart
-│   │   ├── pedido.dart
-│   │   ├── detalle_pedido.dart
-│   │   ├── cita.dart
-│   │   ├── sucursal.dart
-│   │   ├── inventario.dart
-│   │   └── ... (resto)
-│   ├── repositories/            // Interfaces (contratos)
-│   │   ├── i_auth_repository.dart
-│   │   ├── i_cliente_repository.dart
-│   │   ├── i_mascota_repository.dart
-│   │   ├── i_producto_repository.dart
-│   │   ├── i_pedido_repository.dart
-│   │   ├── i_cita_repository.dart
-│   │   ├── i_sucursal_repository.dart
-│   │   └── i_inventario_repository.dart
-│   └── usecases/                // Casos de uso (cada uno expone un método call)
-│       ├── auth/
-│       │   ├── login_usecase.dart
-│       │   │   └── Recibe email, password; invoca authRepository.login; si éxito, también carga cliente desde clienteRepository.
-│       │   ├── register_usecase.dart
-│       │   │   └── Recibe email, password, datos de perfil; crea usuario en Auth, luego crea documento en clientes.
-│       │   └── logout_usecase.dart
-│       ├── cliente/
-│       │   ├── obtener_cliente_usecase.dart
-│       │   ├── actualizar_cliente_usecase.dart
-│       │   └── cambiar_contrasena_usecase.dart
-│       ├── mascota/
-│       │   ├── registrar_mascota_usecase.dart
-│       │   │   └── Recibe datos de mascota + archivo de imagen (opcional). Sube imagen a Storage, luego guarda en Firestore.
-│       │   ├── listar_mascotas_usecase.dart
-│       │   ├── eliminar_mascota_usecase.dart
-│       │   └── actualizar_mascota_usecase.dart
-│       ├── producto/
-│       │   ├── obtener_productos_usecase.dart (paginado, con filtros)
-│       │   ├── buscar_productos_usecase.dart
-│       │   └── obtener_producto_por_id_usecase.dart
-│       ├── pedido/
-│       │   ├── crear_pedido_usecase.dart
-│       │   │   └── Recibe carrito (lista de items con productoId, cantidad, precio), sucursalId, metodoPago. Invoca pedidoRepository.crearPedido, luego limpia carrito local.
-│       │   ├── obtener_pedidos_cliente_usecase.dart
-│       │   └── cancelar_pedido_usecase.dart (solo si estado pendiente)
-│       ├── cita/
-│       │   ├── agendar_cita_usecase.dart
-│       │   │   └── Valida disponibilidad (consultando citas existentes en esa sucursal y hora), luego crea.
-│       │   ├── obtener_citas_cliente_usecase.dart
-│       │   ├── cancelar_cita_usecase.dart
-│       │   └── obtener_horarios_disponibles_usecase.dart (para una sucursal, servicio y día)
-│       ├── sucursal/
-│       │   ├── obtener_sucursales_usecase.dart
-│       │   └── obtener_sucursal_por_id_usecase.dart
-│       └── inventario/
-│           └── verificar_stock_usecase.dart (retorna true/false y cantidad disponible)
-│
-├── presentation/
-│   ├── screens/                 // Cada pantalla es un widget Stateful o ConsumerStatefulWidget
-│   │   ├── auth/
-│   │   │   ├── login_screen.dart
-│   │   │   │   └── Contiene: formulario (email, password), botón login, enlace a registro, botón de recuperar contraseña. Muestra errores de autenticación.
-│   │   │   └── registro_screen.dart
-│   │   │       └── Dos pasos: 1) email, password, confirmación; 2) nombre, teléfono, dirección, fecha nacimiento.
-│   │   ├── home/
-│   │   │   ├── home_screen.dart
-│   │   │   │   └── Scaffold con body: SingleChildScrollView, Column con:
-│   │   │   │       - Carrusel de banners (usando CarouselSlider con imágenes de promociones)
-│   │   │   │       - Sección "Servicios rápidos" (3 botones: Baño, Corte, Consulta) que navegan a agendar cita con ese servicio preseleccionado.
-│   │   │   │       - Sección "Productos más vendidos" (ListView horizontal con ProductCards)
-│   │   │   │       - Sección "Sucursales cercanas" (solo si hay geolocalización)
-│   │   │   └── components/ (widgets específicos del home, ej. home_banner.dart, home_service_button.dart)
-│   │   ├── productos/
-│   │   │   ├── catalogo_productos_screen.dart
-│   │   │   │   └── Usa CustomScrollView con SliverAppBar (colapsable), filtros (persistent header), GridView de productos.
-│   │   │   ├── detalle_producto_screen.dart
-│   │   │   │   └── Muestra imagen principal, selector de cantidad, botones, disponibilidad por sucursal (selección de sucursal mediante dropdown), reseñas (opcional).
-│   │   │   └── componentes/ (product_card.dart, filtros_chip.dart)
-│   │   ├── mascotas/
-│   │   │   ├── mis_mascotas_screen.dart
-│   │   │   │   └── ListView con tarjetas de mascotas, botón flotante para agregar.
-│   │   │   ├── registrar_mascota_screen.dart
-│   │   │   │   └── Formulario con 2 columnas (responsive), selector de sexo (botones), picker de fecha, picker de imagen (cámara/galería), campo de notas médicas.
-│   │   │   └── editar_mascota_screen.dart (similar a registrar, pero con datos precargados)
-│   │   ├── carrito/
-│   │   │   ├── carrito_screen.dart
-│   │   │   │   └── Lista de items con cantidad modificable, botón eliminar, resumen de totales, botón "Continuar compra" y "Proceder al pago".
-│   │   │   └── checkout_screen.dart
-│   │   │       └── Paso 1: Seleccionar sucursal (mapa o lista), Paso 2: Método de pago (simulado: efectivo, tarjeta), Paso 3: Resumen final y botón "Confirmar pedido".
-│   │   ├── citas/
-│   │   │   ├── agendar_cita_screen.dart
-│   │   │   │   └── Stepper con 4 pasos: 1) Seleccionar mascota, 2) Seleccionar servicio, 3) Seleccionar sucursal, 4) Seleccionar fecha/hora (calendario + slots disponibles), 5) Confirmación.
-│   │   │   ├── mis_citas_screen.dart
-│   │   │   │   └── TabBar: Próximas (pendientes/confirmadas) y Pasadas (completadas/canceladas). Cada cita en tarjeta con acciones (cancelar).
-│   │   │   └── detalle_cita_screen.dart
-│   │   ├── perfil/
-│   │   │   ├── perfil_screen.dart
-│   │   │   │   └── Header con foto de perfil (editable), campos de información, botón "Editar perfil", botón "Cerrar sesión".
-│   │   │   └── editar_perfil_screen.dart
-│   │   ├── pedidos/
-│   │   │   ├── mis_pedidos_screen.dart
-│   │   │   │   └── ListView de pedidos ordenados por fecha descendente, cada tarjeta muestra número, total, estado, fecha.
-│   │   │   └── detalle_pedido_screen.dart
-│   │   │       └── Muestra items (productos), direcciones, totales, estado y línea de tiempo (si se implementa).
-│   │   └── sucursales/
-│   │       ├── sucursales_screen.dart
-│   │       │   └── Lista de sucursales con mapa integrado (Google Maps). Cada sucursal tiene botón "Seleccionar" (para carrito) o "Ver horarios".
-│   │       └── mapa_sucursales.dart (widget reutilizable)
-│   │
-│   ├── widgets/                 // Widgets reutilizables (stateless)
-│   │   ├── glass_card.dart
-│   │   │   └── Container con decoration personalizado: color blanco con opacidad 0.7, borderRadius 24, border suave, sombra. Opcionalmente acepta child y margin/padding.
-│   │   ├── glass_button.dart
-│   │   │   └── ElevatedButton con estilo: fondo blanco translúcido, borde redondeado, onPressed, icono opcional.
-│   │   ├── app_bar_custom.dart
-│   │   │   └── AppBar con título, fondo transparente o con blur (usando BackdropFilter), iconos de carrito y notificaciones.
-│   │   ├── bottom_nav_bar.dart
-│   │   │   └── Barra de navegación inferior con efecto glass, 5 ítems: Home, Productos, Mascotas, Citas, Perfil. Cambia el índice mediante Riverpod.
-│   │   ├── loading_indicator.dart
-│   │   │   └── Centro de pantalla con CircularProgressIndicator color azul pastel.
-│   │   ├── product_card.dart
-│   │   │   └── Tarjeta que muestra imagen, nombre, precio, botón de agregar al carrito (con ícono +). Efecto hover en web y ripple en móvil.
-│   │   ├── mascota_card.dart
-│   │   ├── cita_card.dart
-│   │   ├── pedido_card.dart
-│   │   ├── filtros_chip.dart
-│   │   │   └── Filtros desplegables (categorías, especie, rango de precios) usando chips que se pueden seleccionar.
-│   │   └── campo_formulario_glass.dart
-│   │       └── TextFormField con estilo glass: fondo blanco translúcido, bordes redondeados, label con color pastel.
-│   │
-│   ├── providers/               // Gestión de estado con Riverpod
-│   │   ├── auth_provider.dart
-│   │   │   └── StateNotifierProvider<AuthNotifier, AuthState> que maneja usuario autenticado, loading, error. Depende de LoginUseCase, LogoutUseCase, etc.
-│   │   ├── carrito_provider.dart
-│   │   │   └── StateNotifierProvider<CarritoNotifier, List<ItemCarrito>>. Métodos: agregar, quitar, actualizarCantidad, limpiar. Persiste en SharedPreferences.
-│   │   ├── productos_provider.dart
-│   │   │   └── FutureProvider.family para listas paginadas. También un StateProvider para filtros actuales.
-│   │   ├── citas_provider.dart
-│   │   │   └── FutureProvider<List<Cita>> (próximas y pasadas), con métodos para refrescar.
-│   │   ├── mascotas_provider.dart
-│   │   │   └── StreamProvider<List<Mascota>> (escucha en tiempo real cambios en Firestore para ese cliente).
-│   │   ├── sucursales_provider.dart
-│   │   │   └── FutureProvider<List<Sucursal>>.
-│   │   ├── pedidos_provider.dart
-│   │   │   └── FutureProvider<List<Pedido>>.
-│   │   └── conectividad_provider.dart
-│   │       └── StreamProvider<bool> para saber si hay internet.
-│   │
-│   └── utils/
-│       ├── formatters.dart (ya descrito arriba)
-│       └── validators.dart (ya descrito)
-│
-└── firebase_options.dart        // Generado automáticamente por FlutterFire
+  main.dart
+  firebase_options.dart
+  config/
+    app_constants.dart
+    firebase_config.dart
+  models/
+    cliente_model.dart
+    mascota_model.dart
+    categoria_model.dart
+    proveedor_model.dart
+    producto_model.dart
+    sucursal_model.dart
+    empleado_model.dart
+    pedido_model.dart
+    detalle_pedido_model.dart
+    servicio_model.dart
+    cita_model.dart
+    inventario_model.dart
+  views/
+    splash_screen.dart
+    welcome_screen.dart
+    login_screen.dart
+    register_screen.dart
+    forgot_password_screen.dart
+    home_screen.dart
+    catalog/
+      mascotas_catalog_screen.dart
+      productos_catalog_screen.dart
+      detalle_mascota_screen.dart
+      detalle_producto_screen.dart
+    cart/
+      cart_screen.dart
+      checkout_screen.dart
+    favorites/
+      favorites_screen.dart
+    profile/
+      profile_screen.dart
+      edit_profile_screen.dart
+      purchase_history_screen.dart
+    appointments/
+      appointments_screen.dart
+      new_appointment_screen.dart
+      appointment_detail_screen.dart
+    admin/
+      admin_dashboard_screen.dart
+      manage_mascotas_screen.dart
+      manage_productos_screen.dart
+      manage_citas_screen.dart
+    search/
+      search_screen.dart
+      filters_widget.dart
+  widgets/
+    common/
+      glass_card.dart
+      glass_button.dart
+      glass_app_bar.dart
+      glass_bottom_nav_bar.dart
+      loading_indicator.dart
+      error_widget.dart
+      empty_state_widget.dart
+      custom_text_field.dart
+      rating_stars.dart
+    catalog/
+      product_card.dart
+      mascota_card.dart
+      category_grid.dart
+      horizontal_product_list.dart
+    cart/
+      cart_item_card.dart
+      cart_summary.dart
+    appointments/
+      calendar_widget.dart
+      appointment_card.dart
+    navigation/
+      custom_drawer.dart
+      main_navigation.dart
+  controllers/
+    auth_controller.dart
+    user_controller.dart
+    product_controller.dart
+    mascota_controller.dart
+    cart_controller.dart
+    favorites_controller.dart
+    appointments_controller.dart
+    order_controller.dart
+    search_controller.dart
+    admin_controller.dart
+  services/
+    firestore_service.dart
+    auth_service.dart
+    storage_service.dart (para imágenes)
+    notification_service.dart (local)
+    location_service.dart (opcional)
+  state/   (manejo de estado con Provider o Riverpod)
+    providers/
+      auth_provider.dart
+      cart_provider.dart
+      favorites_provider.dart
+      theme_provider.dart
+      appointments_provider.dart
+  navigation/
+    app_router.dart
+    routes.dart
+  utils/
+    validators.dart
+    formatters.dart
+    date_helpers.dart
+    constants.dart
+    theme_data.dart
+    glassmorphism_effects.dart
+  assets/
+    images/
+      logo.png
+      placeholder.png
+      banner1.jpg
+      ...
+    icons/
+      custom_icons.dart (si se usa iconfont)
+    fonts/
+      Poppins-Regular.ttf
+      Poppins-Medium.ttf
+      Poppins-SemiBold.ttf
+      Poppins-Bold.ttf
+    animations/
+      loading_animation.json (Lottie)
+  firebase/
+    collections.dart   (nombres de colecciones como constantes)
+    helpers/
+      firebase_helpers.dart
 ```
 
-**Archivos adicionales en la raíz del proyecto:**
+### 2.1 Explicación detallada de cada carpeta y archivo
 
-- `pubspec.yaml` – con todas las dependencias listadas en la sección 3.
-- `.env` – contiene `FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`, etc. (no se sube a git).
-- `firebase.json` – configuración de hosting (para web).
-- `analysis_options.yaml` – reglas de lint personalizadas (incluyendo evitar `print` en producción).
-- `assets/` – carpeta con fuentes (Quicksand, Poppins), imágenes de placeholder, iconos SVG.
-- `web/` – contiene `index.html` modificado para incluir scripts de Firebase (si es necesario) y meta viewport.
+- **main.dart**: Punto de entrada de la aplicación. Se encarga de inicializar Firebase (usando `firebase_options.dart`), configurar el enrutador global, y definir el widget principal que envuelve la app con los proveedores de estado (Provider/Riverpod) y el tema visual.
 
----
+- **firebase_options.dart**: Archivo generado automáticamente por FlutterFire CLI. Contiene la configuración específica del proyecto Firebase (claves, IDs de proyecto, etc.) para cada plataforma (Android, iOS, Web, Windows). Este archivo nunca debe editarse manualmente.
 
-## 3. Dependencias y Paquetes – Especificación Técnica
+- **config/**: Contiene archivos con valores fijos y configuración global.
+  - `app_constants.dart`: Define nombres de colecciones de Firestore (como 'clientes', 'mascotas', 'productos'), claves para almacenamiento local (SharedPreferences), URLs de términos y condiciones, etc.
+  - `firebase_config.dart`: Inicializa Firebase y exporta instancias de Firestore, Auth y Storage. Incluye lógica para verificar si el modo prueba está activo y registrar advertencias en consola.
 
-A continuación se listan **todos** los paquetes necesarios en `pubspec.yaml`, con su versión recomendada y propósito exacto.
+- **models/**: Clases que representan la estructura de los documentos en Firestore. Cada modelo tiene:
+  - Atributos con tipos de Dart.
+  - Constructor vacío y constructor desde un mapa (`fromFirestore`).
+  - Método `toMap()` para enviar datos a Firestore.
+  - Validaciones básicas (ej. email no vacío, precio positivo).
+  - Cada modelo corresponde directamente a una de las tablas SQL proporcionadas (cliente, mascota, etc.) pero adaptado al modelo NoSQL de Firestore. Por ejemplo, en lugar de claves foráneas, se almacenan referencias (IDs) como strings.
 
-| Paquete | Versión | Propósito |
-|---------|---------|------------|
-| **flutter** | sdk: flutter | SDK base |
-| **firebase_core** | ^2.24.2 | Inicialización de Firebase en todas las plataformas |
-| **cloud_firestore** | ^4.14.0 | Acceso a Firestore (colecciones, documentos, queries) |
-| **firebase_auth** | ^4.16.0 | Autenticación de usuarios (email/password) |
-| **firebase_storage** | ^11.6.0 | Subida y descarga de imágenes |
-| **riverpod** | ^2.4.9 | Gestión de estado reactivo (providers) |
-| **flutter_riverpod** | ^2.4.9 | Integración de Riverpod con Flutter |
-| **go_router** | ^13.0.0 | Navegación declarativa con rutas anidadas y protección |
-| **google_fonts** | ^6.1.0 | Fuentes Poppins y Quicksand |
-| **glassmorphism** | ^3.0.0 | Efecto de vidrio esmerilado (alternativa a BackdropFilter) |
-| **animate_do** | ^3.1.2 | Animaciones predefinidas (fadeIn, bounce, zoom) |
-| **carousel_slider** | ^4.2.1 | Carrusel de banners en el home |
-| **image_picker** | ^1.0.5 | Seleccionar imagen de cámara o galería |
-| **flutter_svg** | ^2.0.9 | Mostrar iconos en formato SVG |
-| **intl** | ^0.18.1 | Formateo de fechas, números y moneda |
-| **equatable** | ^2.0.5 | Simplificar comparaciones de objetos (para providers) |
-| **uuid** | ^4.2.1 | Generar IDs locales temporales (carrito) |
-| **shared_preferences** | ^2.2.2 | Persistir carrito de compras y preferencias |
-| **connectivity_plus** | ^5.0.2 | Detectar cambios en la conectividad a internet |
-| **flutter_native_splash** | ^2.3.8 | Pantalla de bienvenida personalizada |
-| **flutter_launcher_icons** | ^0.13.1 | Generar ícono de la app para todas las plataformas |
-| **mask_text_input_formatter** | ^2.8.0 | Máscara para teléfono (formato internacional o local) |
-| **flutter_dotenv** | ^5.1.0 | Cargar variables de entorno desde .env |
-| **logger** | ^1.4.0 | Logs estructurados en consola (debug) |
-| **google_maps_flutter** | ^2.5.3 | Mostrar mapa de sucursales (Android/iOS) – opcional, se puede usar webview |
-| **geolocator** | ^10.1.0 | Obtener ubicación del usuario para sucursales cercanas (opcional) |
-| **flutter_cache_manager** | ^3.3.1 | Cachear imágenes de productos para mejorar rendimiento |
-| **dio** | ^5.4.0 | (Opcional) Para llamadas a Cloud Functions HTTP, aunque se prefieren triggers) |
+- **views/**: Pantallas completas organizadas por módulo. Cada pantalla es un `StatefulWidget` o `ConsumerWidget` (si se usa Riverpod). Incluyen únicamente la estructura visual y llaman a métodos de los controladores para acciones de negocio. No contienen lógica de acceso a datos.
 
-**Dev dependencies:**
-- `flutter_test` – pruebas unitarias.
-- `mocktail` – simular dependencias en pruebas.
-- `build_runner` – para generar código de serialización JSON (si se usa json_serializable).
+- **widgets/**: Componentes reutilizables. Subcarpetas para agrupar por función.
+  - `common/`: Elementos genéricos como tarjetas glassmorphism, botones con efectos, barras de navegación personalizadas, indicadores de carga, mensajes de error, campos de texto estilizados, etc.
+  - `catalog/`: Tarjetas específicas para mostrar productos o mascotas en grids o listas.
+  - `cart/`: Componentes del carrito (fila de producto, resumen de compra).
+  - `appointments/`: Calendario visual (puede usar un paquete externo), tarjeta de cita.
+  - `navigation/`: Drawer lateral personalizado (con efecto glassmorphism) y widget de navegación principal que decide si mostrar bottom bar o drawer según la plataforma.
 
-**Assets a incluir en `pubspec.yaml`:**
-```
-flutter:
-  assets:
-    - assets/images/
-    - assets/icons/
-    - assets/fonts/
-    - .env
-```
+- **controllers/**: Capa de lógica de negocio. Cada controlador contiene métodos para:
+  - Leer/escribir datos desde Firestore (usando los servicios).
+  - Transformar datos de modelos a mapas.
+  - Manejar estado local (por ejemplo, mantener lista de productos en memoria).
+  - Validaciones complejas.
+  - Comunicación entre pantallas (usando notificadores como ChangeNotifier o StateNotifierProvider).
+  - Ejemplo: `cart_controller` gestiona agregar, eliminar, actualizar cantidades y calcular totales.
 
-**Fuentes:**
-- `Poppins-Regular.ttf`, `Poppins-SemiBold.ttf`, `Quicksand-Bold.ttf` descargadas de Google Fonts e incluidas en `assets/fonts/`.
+- **services/**: Abstracción de servicios externos.
+  - `firestore_service.dart`: Contiene métodos genéricos para operaciones CRUD (crear, leer, actualizar, eliminar) sobre cualquier colección. También incluye consultas con filtros, ordenamientos y límites. Maneja errores de permisos (modo prueba) y conexión.
+  - `auth_service.dart`: Wrapper sobre Firebase Auth. Provee métodos para registro con email/contraseña, inicio de sesión, cierre de sesión, restablecimiento de contraseña, verificación de email, y persistencia de sesión. También escucha cambios en el estado de autenticación.
+  - `storage_service.dart`: Subir imágenes a Firebase Storage (fotos de mascotas, productos, perfil). Devuelve URLs públicas. Maneja compresión de imágenes antes de subir.
+  - `notification_service.dart`: Notificaciones locales (usando un paquete como flutter_local_notifications) para recordatorios de citas, carrito abandonado, etc.
+  - `location_service.dart`: (Opcional) Obtiene ubicación del usuario para sugerir sucursales cercanas.
 
----
+- **state/**: Manejo de estado global. Se recomienda usar **Riverpod** por su simplicidad y compatibilidad con Firebase. Los providers se separan en archivos:
+  - `auth_provider.dart`: Expone el usuario actual (null si no autenticado), estado de carga, errores.
+  - `cart_provider.dart`: Lista de items en carrito, totales, persistencia local (SharedPreferences) para mantener carrito entre sesiones.
+  - `favorites_provider.dart`: Conjunto de IDs de productos/mascotas favoritos.
+  - `theme_provider.dart`: Alternancia entre tema claro/oscuro (aunque el diseño base es claro con glassmorphism).
+  - `appointments_provider.dart`: Lista de citas, filtros, estado de carga.
 
-## 4. Configuración de Firebase – Firestore, Auth, Storage, Functions
+- **navigation/**: Define el sistema de rutas.
+  - `app_router.dart`: Configura rutas nombradas (ej. '/home', '/product/:id') y transiciones animadas (deslizamiento hacia la derecha o fade). Usa el paquete `go_router` que es declarativo y compatible con web (URLs).
+  - `routes.dart`: Constantes con los nombres de las rutas para evitar errores tipográficos.
 
-### 4.1 Proyecto Firebase
-- Crear proyecto en consola de Firebase con nombre `petco-app`.
-- No habilitar Google Analytics (proyecto personal).
+- **utils/**: Funciones auxiliares que no pertenecen a ninguna capa específica.
+  - `validators.dart`: Validadores de email, teléfono, contraseña fuerte (mínimo 6 caracteres), fechas.
+  - `formatters.dart`: Formateo de moneda (pesos mexicanos o dólares), fechas legibles, truncado de texto.
+  - `date_helpers.dart`: Conversión entre DateTime y Timestamp de Firestore, cálculo de edad de mascotas.
+  - `constants.dart`: Valores como el IVA (16%), porcentaje de descuento máximo, etc.
+  - `theme_data.dart`: Configuración completa del tema de Material (colores, tipografía, formas de esquinas, sombras) aplicando la paleta pastel y efectos glassmorphism donde sea posible.
+  - `glassmorphism_effects.dart`: Clases que aplican decoraciones con blur, transparencia y bordes, reutilizables en cualquier widget.
 
-### 4.2 Aplicaciones registradas
-- **Android:** `com.petco.app` (crear archivo `android/app/google-services.json`).
-- **iOS:** `com.petco.app` (crear `ios/Runner/GoogleService-Info.plist`).
-- **Web:** `petco-app.web.app` (copiar configuración de SDK en `web/index.html` o usar `firebase_options.dart`).
-- **Windows:** usar la misma configuración que Android (Firebase admite Windows mediante C++ SDK, pero Flutter Windows usa la misma configuración que Android a través de `firebase_core`).
+- **assets/**: Archivos estáticos.
+  - `images/`: Logo, placeholders, banners, fotos de muestra para desarrollo. En producción, las imágenes reales se suben a Firebase Storage.
+  - `icons/`: Si se utiliza una fuente de iconos personalizada (ej. IconFont), se define una clase Dart con los puntos de código.
+  - `fonts/`: Archivos de fuentes .ttf o .otf registrados en `pubspec.yaml`.
+  - `animations/`: Animaciones en formato JSON de Lottie (loading, éxito, error, etc.).
 
-### 4.3 Autenticación
-- Habilitar **proveedor de correo electrónico/contraseña**.
-- Deshabilitar "verificación de correo electrónico" para simplificar (proyecto personal, pero se puede activar luego).
-
-### 4.4 Firestore
-- Crear base de datos en modo **nativo** (no Datastore).
-- Ubicación: `us-central1` (por defecto).
-- Las colecciones se crearán automáticamente al primer documento insertado. Para facilitar, se crean manualmente desde la consola: `clientes`, `mascotas`, `categorias`, `proveedores`, `productos`, `sucursales`, `empleados`, `pedidos`, `servicios`, `citas`, `inventario`.
-
-### 4.5 Firebase Storage
-- Bucket por defecto: `petco-app.appspot.com`.
-- Crear carpetas: `productos/`, `mascotas/`, `clientes/`, `promociones/`.
-
-### 4.6 Cloud Functions
-- Inicializar funciones con `firebase init functions` (seleccionar TypeScript o JavaScript). Se usarán Node.js 18.
-- Estructura de funciones:
-  - `onPedidoCreated`: trigger cuando se crea un documento en `pedidos`.
-  - `onCitaCreated`: trigger cuando se crea una cita (valida disponibilidad y asigna empleado).
-  - `actualizarInventario`: llamada HTTP (o trigger) para recalcular stock.
-- Desplegar con `firebase deploy --only functions`.
+- **firebase/**: Organización adicional para Firestore.
+  - `collections.dart`: Define constantes con los nombres exactos de las colecciones en Firestore (ej. `clientes`, `mascotas`, `productos`). Evita cadenas escritas manualmente en el código.
+  - `helpers/firebase_helpers.dart`: Funciones para convertir Timestamp a DateTime, manejo de transacciones, lotes (batch writes) para actualizar múltiples documentos de forma atómica, y funciones de consulta optimizada (como paginación con `startAfter`).
 
 ---
 
-## 5. Modelado de Datos en Firestore – Colecciones, Subcolecciones, Referencias
+## 3. Relación entre las tablas SQL adjuntas y Firestore
 
-Cada colección se documenta con su estructura exacta (campos, tipos, índices requeridos).
+Las tablas proporcionadas (`cliente`, `mascota`, `categoria`, `proveedor`, `producto`, `sucursal`, `empleado`, `pedido`, `detalle_pedido`, `servicio`, `cita`, `inventario`) son la base del modelo relacional. En Firestore (NoSQL) se adaptan de la siguiente manera:
 
-### Colección `clientes`
-- Document ID: `uid` de Firebase Authentication.
-- Campos:
-  - `nombre`: string, obligatorio.
-  - `email`: string, obligatorio, único (se valida en reglas).
-  - `telefono`: string, opcional.
-  - `direccion`: string, opcional.
-  - `fecha_nacimiento`: timestamp, opcional.
-  - `fecha_registro`: timestamp, automático (serverTimestamp).
-  - `tipo_membresia`: string, valores posibles: `estandar`, `premium`. Default `estandar`.
-  - `activo`: booleano, default true.
-  - `foto_url`: string, opcional (URL de Storage).
+- Cada tabla se convierte en una **colección** raíz, excepto aquellas que naturalmente son subcolecciones de otra entidad.
+- Las **claves foráneas** (ej. `cliente_id` en `mascota`) se representan como un campo de tipo `string` que contiene el ID del documento padre. No se usan referencias nativas de Firestore por simplicidad y compatibilidad con consultas.
+- Las relaciones **uno a muchos** (un cliente tiene muchas mascotas) se mantienen como una colección `mascotas` con un campo `cliente_id`. No se anidan subcolecciones para evitar límites de tamaño y complejidad en consultas.
+- Las relaciones **muchos a muchos** (productos en un pedido) se manejan con una colección `detalles_pedido` que referencia a `pedido_id` y `producto_id`.
+- El campo `categoria_padre_id` (auto-relación) se implementa como un string opcional que apunta al ID de otra categoría. Las consultas recursivas se evitan trayendo todas las categorías y construyendo el árbol en el cliente.
 
-### Colección `mascotas`
-- Document ID: autogenerado.
-- Campos:
-  - `cliente_id`: referencia (string) al documento en `clientes`.
-  - `nombre`: string.
-  - `especie`: string (perro, gato, ave, etc.).
-  - `raza`: string, opcional.
-  - `sexo`: string, valores 'M', 'F', 'N'.
-  - `fecha_nacimiento`: timestamp.
-  - `peso_kg`: número (double).
-  - `foto_url`: string, opcional.
-  - `notas_medicas`: string, opcional.
+**Estructura de colecciones en Firestore** (nombres en plural):
 
-### Colección `categorias`
-- Document ID: autogenerado.
-- Campos:
-  - `nombre`: string.
-  - `descripcion`: string.
-  - `categoria_padre_id`: referencia (string) a otra categoría (opcional). Para construir árbol.
-  - `imagen_url`: string.
-  - `activo`: booleano.
+- `clientes` : documentos con los campos del SQL (`nombre`, `email`, `telefono`, `fecha_nacimiento`, `tipo_membresia`, `activo`, etc.) más campos adicionales como `foto_url`, `favoritos` (array de IDs de productos/mascotas), `carrito` (array de objetos temporales o colección separada).
+- `mascotas` : documentos con `cliente_id`, `nombre`, `especie`, `raza`, `sexo`, `fecha_nacimiento`, `peso_kg`, `foto_url`, `notas_medicas`.
+- `categorias` : documentos con `nombre`, `descripcion`, `categoria_padre_id`, `imagen_url`, `activo`.
+- `proveedores` : documentos con `nombre`, `contacto_nombre`, `email`, `telefono`, `pais`, `rfc`, `activo`.
+- `productos` : documentos con `categoria_id`, `proveedor_id`, `nombre`, `descripcion`, `codigo_barras`, `precio`, `precio_costo`, `especie_objetivo`, `imagen_url`, `activo`.
+- `sucursales` : documentos con `nombre`, `direccion`, `ciudad`, `estado`, `telefono`, `horario`, `latitud`, `longitud`, `activo`.
+- `empleados` : documentos con `sucursal_id`, `nombre`, `cargo`, `email`, `telefono`, `fecha_contrato`, `salario`, `activo`.
+- `pedidos` : documentos con `cliente_id`, `empleado_id`, `sucursal_id`, `fecha_pedido`, `subtotal`, `impuesto`, `descuento`, `total`, `estado`, `canal`, `metodo_pago`.
+- `detalles_pedido` : documentos con `pedido_id`, `producto_id`, `cantidad`, `precio_unitario`, `descuento`, `subtotal`.
+- `servicios` : documentos con `nombre`, `descripcion`, `precio`, `duracion_min`, `tipo`, `especie_objetivo`, `activo`.
+- `citas` : documentos con `cliente_id`, `mascota_id`, `servicio_id`, `empleado_id`, `sucursal_id`, `fecha_hora`, `estado`, `precio_cobrado`, `notas`.
+- `inventario` : documentos con `producto_id`, `sucursal_id`, `cantidad`, `stock_minimo`, `stock_maximo`, `ultima_actualizacion`. La combinación `producto_id + sucursal_id` es única gracias a una regla de Firestore (índice compuesto).
 
-### Colección `productos`
-- Document ID: autogenerado.
-- Campos:
-  - `categoria_id`: referencia.
-  - `proveedor_id`: referencia, opcional.
-  - `nombre`: string.
-  - `descripcion`: string.
-  - `codigo_barras`: string, único.
-  - `precio`: número.
-  - `precio_costo`: número.
-  - `especie_objetivo`: string (perro, gato, etc. o 'todas').
-  - `imagen_url`: string.
-  - `activo`: booleano.
-  - `ventas_totales`: número (actualizado por Cloud Function).
-
-### Colección `sucursales`
-- Document ID: autogenerado.
-- Campos: `nombre`, `direccion`, `ciudad`, `estado`, `telefono`, `horario` (texto libre, ej. "Lun-Vie 9-20"), `latitud`, `longitud`, `activo`.
-
-### Colección `pedidos`
-- Document ID: autogenerado.
-- Campos:
-  - `cliente_id`: referencia.
-  - `empleado_id`: referencia opcional.
-  - `sucursal_id`: referencia.
-  - `fecha_pedido`: timestamp.
-  - `subtotal`, `impuesto`, `descuento`, `total`: números.
-  - `estado`: string (pendiente, pagado, enviado, entregado, cancelado).
-  - `canal`: string (app, web, tienda).
-  - `metodo_pago`: string (efectivo, tarjeta).
-- Subcolección `detalles_pedido` (dentro de cada pedido):
-  - Documentos autogenerados.
-  - Campos: `producto_id`, `cantidad`, `precio_unitario`, `descuento`, `subtotal`.
-
-### Colección `servicios`
-- Campos: `nombre`, `descripcion`, `precio`, `duracion_min` (entero), `tipo` (baño, corte, consulta, vacunación, etc.), `especie_objetivo`, `activo`.
-
-### Colección `citas`
-- Campos:
-  - `cliente_id`, `mascota_id`, `servicio_id`, `empleado_id` (opcional), `sucursal_id`.
-  - `fecha_hora`: timestamp.
-  - `estado`: string (pendiente, confirmada, completada, cancelada).
-  - `precio_cobrado`: número (puede ser el precio del servicio en ese momento).
-  - `notas`: string.
-
-### Colección `inventario`
-- Document ID: compuesto por `producto_id_sucursal_id` (ej. "abc123_xyz789") para evitar duplicados.
-- Campos: `producto_id`, `sucursal_id`, `cantidad` (entero), `stock_minimo`, `stock_maximo`, `ultima_actualizacion`.
+**Flujo de información entre colecciones**:
+- Cuando un cliente agrega un producto al carrito, se crea un documento temporal en una subcolección `carrito` dentro del cliente, o se usa el estado local del provider. Al finalizar la compra, se crea un documento en `pedidos` y múltiples documentos en `detalles_pedido`.
+- Una cita verifica disponibilidad del servicio y empleado. Se consulta `empleados` por sucursal y horario, y se valida que no exista otra cita en la misma fecha_hora para ese empleado (usando consultas con filtros).
+- El inventario se actualiza cuando se realiza un pedido (restar cantidad) o cuando se recibe una reposición (desde un panel administrativo). La actualización debe hacerse en una transacción (batch) para evitar inconsistencias.
+- Las consultas de productos suelen unir información de categorías y proveedores leyendo los documentos por separado (no hay joins reales). Se recomienda desnormalizar algunos campos como el nombre de la categoría dentro del producto para evitar lecturas adicionales, pero dado el modo prueba y naturaleza académica, se pueden hacer múltiples lecturas.
 
 ---
 
-## 6. Reglas de Seguridad de Firestore – Explicación Lógica Completa
+## 4. Integración con Firebase (proyecto PetcoGestionApp en modo prueba)
 
-Las reglas se escriben en el lenguaje de reglas de Firebase. Aunque no se da código, se describe la lógica para cada colección.
+### 4.1 Configuración inicial dentro de Flutter
 
-### Reglas generales:
-- `allow read, write: if false;` para todo por defecto.
-- Solo usuarios autenticados: `allow read: if request.auth != null;` para colecciones de solo lectura (productos, servicios, sucursales, categorías).
-- Escritura restringida según propiedad del documento.
+Al iniciar la aplicación, el archivo `main.dart` debe ejecutar `WidgetsFlutterBinding.ensureInitialized()`, luego `await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` usando las opciones generadas en `firebase_options.dart`. Después de inicializar, se debe verificar que Firestore esté disponible (modo prueba permitirá cualquier operación, pero sin reglas de seguridad). Para propósitos de desarrollo, se puede agregar un mensaje en consola indicando que la app está en modo prueba.
 
-### Colección `clientes`
-- **Lectura:** Un usuario puede leer su propio documento: `request.auth.uid == resource.id`.
-- **Escritura (crear):** Solo puede crear un documento si `request.auth.uid == request.resource.id` (el ID debe coincidir con el UID). Además, el campo `email` debe coincidir con `request.auth.token.email` (si se usa verificación de email).
-- **Actualización:** Misma regla de ID, y no puede cambiar `email` o `fecha_registro`.
-- **Eliminación:** No permitida (solo desactivar `activo`).
+La conexión con Firestore se centraliza en `FirestoreService`. Este servicio expone métodos genéricos como `getCollection(collectionName)`, `getDocument(collectionName, docId)`, `addDocument`, `updateDocument`, `deleteDocument`, y métodos específicos como `getProductsByCategory(categoryId)`, `getMascotasByCliente(clienteId)`, etc. Internamente usa la instancia de `FirebaseFirestore.instance`.
 
-### Colección `mascotas`
-- **Lectura:** Solo si `request.auth.uid == resource.data.cliente_id` (el dueño de la mascota es el autenticado). Alternativa: usar `get` para verificar que el cliente_id existe y pertenece.
-- **Escritura (crear):** El `cliente_id` debe ser igual a `request.auth.uid`.
-- **Actualización:** Solo si el `cliente_id` del documento es el uid.
-- **Eliminación:** Misma regla.
+### 4.2 Estrategias de lectura y escritura
 
-### Colección `productos`, `categorias`, `servicios`, `sucursales`
-- **Lectura:** `allow read: if request.auth != null;` (cualquier autenticado).
-- **Escritura:** Solo si `request.auth.token.admin == true` (se debe asignar un claim personalizado en Firebase Auth para un usuario admin). Como es proyecto personal, se puede hacer una excepción: `allow write: if request.auth.uid == "uid_del_administrador"` (valor fijo).
+- **Lectura única** (`get`): Para listas que no cambian frecuentemente (catálogo de productos, lista de sucursales). Los resultados se almacenan en caché local automáticamente por Firestore, lo que mejora la experiencia offline limitada.
+- **Escuchas en tiempo real** (`snapshots`): Para datos que deben actualizarse en la interfaz inmediatamente, como el carrito compartido entre dispositivos (no es necesario en modo prueba académico, pero útil para notificaciones de citas). Se usan con `StreamBuilder` en las vistas correspondientes.
+- **Escritura**: Todas las operaciones de creación, actualización o eliminación se realizan a través de los controladores, que llaman al `FirestoreService` y manejan errores (por ejemplo, permisos insuficientes en modo prueba rara vez ocurren, pero puede haber errores de red).
+- **Transacciones y lotes**: Para operaciones que afectan múltiples documentos (ej. crear un pedido y actualizar inventario), se usa `FirebaseFirestore.instance.runTransaction` o `WriteBatch`. Esto asegura consistencia aunque el modo prueba no tenga reglas estrictas.
 
-### Colección `pedidos`
-- **Lectura:** Un usuario solo puede leer sus propios pedidos: `request.auth.uid == resource.data.cliente_id`.
-- **Escritura (crear):** Debe cumplir que `request.resource.data.cliente_id == request.auth.uid`. Además, el `subtotal` debe coincidir con la suma de los `detalles_pedido` (se puede delegar a Cloud Function).
-- **Actualización:** Solo el mismo usuario puede actualizar, pero no cambiar `total` ni `estado` (esto lo hará la Cloud Function).
-- **Eliminación:** No permitida.
+### 4.3 Autenticación y persistencia de sesión
 
-### Subcolección `detalles_pedido`
-- Las reglas se heredan del pedido padre. Se valida que el pedido pertenezca al usuario.
+Firebase Auth se utiliza con el método de **correo electrónico y contraseña**. El `AuthService` expone:
+- `signUp(email, password, nombre, ...)`: crea el usuario en Auth y luego crea un documento en la colección `clientes` con el mismo UID como ID del documento. Esto permite vincular fácilmente.
+- `signIn(email, password)`: inicia sesión y retorna el usuario.
+- `signOut()`: cierra sesión y limpia el estado local.
+- `resetPassword(email)`: envía correo de restablecimiento.
+- `authStateChanges`: un stream que notifica cambios de autenticación. En el `main.dart`, se escucha este stream para redirigir a la pantalla de login si el usuario es null, o al home si está autenticado.
 
-### Colección `citas`
-- **Lectura:** `request.auth.uid == resource.data.cliente_id`.
-- **Creación:** `request.resource.data.cliente_id == request.auth.uid`. Además, debe validarse que `mascota_id` existe y su `cliente_id` coincide (usando `get`).
-- **Actualización/cancelación:** Solo el cliente o un empleado (si se implementa rol empleado).
+La persistencia de sesión se maneja automáticamente por Firebase Auth en todas las plataformas. No se necesita almacenamiento adicional. El modo prueba no limita la autenticación, pero las cuentas creadas son válidas y persisten.
 
-### Colección `inventario`
-- **Lectura:** Autenticados (para consultar stock antes de comprar).
-- **Escritura:** Solo administradores o la Cloud Function. El cliente no puede modificar stock directamente.
+### 4.4 Manejo de errores comunes en modo prueba
 
-### Validaciones adicionales:
-- Al crear un pedido, se debe verificar que el stock en `inventario` para cada producto y sucursal sea suficiente (esto se hace en la Cloud Function, no en reglas).
-- Al crear una cita, verificar que no exista otra cita en la misma sucursal a la misma hora (consulta en reglas es costosa, se hace en Cloud Function).
+- **Error de permisos (Missing or insufficient permissions)**: En modo prueba, las reglas de Firestore están abiertas (`allow read, write: if true;`), por lo que este error no debería aparecer. Sin embargo, si se cambia accidentalmente a reglas restringidas, la app mostrará un diálogo amigable: "Error de conexión con el servidor. Contacta al administrador."
+- **Error de red**: Se captura con try-catch en cada llamada a Firestore. Se muestra una tarjeta con mensaje "Sin conexión a internet" y un botón "Reintentar".
+- **Documento no existe**: Se maneja retornando null en el servicio, y la vista muestra un `EmptyStateWidget`.
+- **Límites de consultas**: En modo prueba no hay restricciones, pero para buenas prácticas se implementa paginación con `limit(20)` y `startAfter` para listas largas (productos, mascotas).
 
----
+### 4.5 Estructura de colecciones y nomenclatura
 
-## 7. Índices Compuestos en Firestore – Lista Necesaria
+- Todas las colecciones se nombran en **plural** y **minúsculas**, usando guiones bajos para separar palabras: `clientes`, `mascotas`, `detalles_pedido`.
+- Los IDs de los documentos se generan automáticamente con `doc().id` excepto para `clientes`, donde se usa el UID de Firebase Auth para facilitar las consultas.
+- Campos dentro de los documentos: usan `camelCase` (ej. `fechaNacimiento`) por convención de Firestore.
+- Para evitar problemas con mayúsculas/minúsculas, todos los strings de búsqueda (emails, códigos de barras) se almacenan en minúsculas y se normalizan al escribir.
 
-Firestore requiere índices para consultas con múltiples `where` y `orderBy`. Se definen los siguientes:
+### 4.6 Organización visual dentro de Firebase Console
 
-| Colección | Campos indexados | Tipo de consulta |
-|-----------|----------------|------------------|
-| `productos` | `activo` (asc), `nombre` (asc) | Listar productos activos ordenados por nombre |
-| `productos` | `activo` (asc), `precio` (asc) | Filtrar activos por precio |
-| `productos` | `categoria_id` (asc), `activo` (asc) | Filtrar por categoría |
-| `productos` | `especie_objetivo` (asc), `activo` (asc) | Filtrar por especie |
-| `pedidos` | `cliente_id` (asc), `fecha_pedido` (desc) | Obtener pedidos de un cliente ordenados por fecha |
-| `citas` | `cliente_id` (asc), `fecha_hora` (desc) | Historial de citas por cliente |
-| `citas` | `sucursal_id` (asc), `fecha_hora` (asc) | Verificar disponibilidad de horario en sucursal |
-| `inventario` | `producto_id` (asc), `sucursal_id` (asc) | Consultar stock por producto y sucursal |
-| `mascotas` | `cliente_id` (asc), `nombre` (asc) | Listar mascotas de un cliente |
-
-Estos índices se crean automáticamente cuando la app ejecuta la consulta (Firestore muestra un enlace en el error). También se pueden predefinir en un archivo `firestore.indexes.json`.
+En Firebase Console, dentro del proyecto **PetcoGestionApp**, se deben crear las colecciones mencionadas. Para una fácil navegación durante el desarrollo:
+- Se pueden añadir documentos de ejemplo (un cliente, algunos productos, una sucursal, etc.) usando la interfaz web.
+- Es útil crear **índices compuestos** para consultas que involucren dos o más campos (por ejemplo, filtrar productos por `categoria_id` y `activo`). Firebase Console pedirá crearlos automáticamente al ejecutar la consulta desde la app.
+- Las reglas de Firestore se dejarán en modo prueba (`true`) durante todo el desarrollo, sin necesidad de modificarlas. Para evitar escrituras accidentales, se puede implementar una validación adicional en los controladores (por ejemplo, no permitir eliminar un producto si tiene pedidos asociados).
 
 ---
 
-## 8. Cloud Functions – Triggers, Propósitos y Lógica de Negocio
+## 5. Flujo completo de funcionamiento de la aplicación
 
-Se implementan **tres funciones principales** usando Node.js (runtime 18). Se describen paso a paso.
+### 5.1 Inicio de la aplicación (splash y bienvenida)
 
-### Función 1: `onPedidoCreated`
-- **Trigger:** `functions.firestore.document('pedidos/{pedidoId}').onCreate`
-- **Propósito:** Validar stock, actualizar inventario, recalcular totales y cambiar estado del pedido.
-- **Lógica (en palabras):**
-  1. Obtener el nuevo pedido (datos del documento).
-  2. Obtener los detalles del pedido desde la subcolección `detalles_pedido` (se leen todos los documentos).
-  3. Para cada detalle:
-     - Buscar el inventario correspondiente (`producto_id` + `sucursal_id` del pedido).
-     - Verificar si `cantidad` en inventario es mayor o igual a la cantidad solicitada.
-     - Si no, abortar la transacción y marcar el pedido como `fallido_por_stock` (o cancelado).
-  4. Si todo el stock es suficiente, iniciar una transacción de Firestore:
-     - Restar las cantidades de cada inventario.
-     - Actualizar el campo `estado` del pedido a `pagado` (o `confirmado`).
-     - Actualizar el campo `ventas_totales` de cada producto (incrementar por cantidad).
-  5. Enviar una notificación push (opcional, usando FCM) al cliente.
-- **Salida:** Documento de pedido actualizado.
+- Al abrir la app, se muestra una pantalla de **splash** con el logo centrado, fondo blanco o azul pastel muy suave, y una animación de desvanecimiento (fade in/out) o una animación Lottie de una huella de mascota. Duración aproximada: 1.5 segundos.
+- Después, se evalúa el estado de autenticación. Si el usuario ya inició sesión previamente (token válido de Firebase), se navega directamente al **home**. Si no, se muestra la **pantalla de bienvenida**.
+- La pantalla de bienvenida contiene una imagen o ilustración central (ej. un perro y un gato), dos botones grandes: "Iniciar sesión" (rojo pastel) y "Registrarse" (azul pastel con borde). También un enlace "Continuar como invitado" que permite explorar productos y mascotas pero sin acceder a carrito, citas o perfil.
 
-### Función 2: `onCitaCreated`
-- **Trigger:** `functions.firestore.document('citas/{citaId}').onCreate`
-- **Propósito:** Verificar que no haya doble reserva y asignar un empleado disponible.
-- **Lógica:**
-  1. Leer los datos de la nueva cita (sucursal_id, fecha_hora).
-  2. Consultar `citas` existentes en esa sucursal con la misma `fecha_hora` y estado no cancelado.
-  3. Si existe alguna, cambiar el estado de la nueva cita a `conflicto` y enviar notificación al cliente (o rechazar la creación).
-  4. Si no hay conflicto, buscar un empleado de la sucursal cuyo cargo sea adecuado para el servicio (campo `tipo` del servicio). Por simplicidad, asignar el primer empleado activo.
-  5. Actualizar el campo `empleado_id` y poner estado `confirmada`.
-- **Nota:** Para evitar condiciones de carrera, se debe usar una transacción o Firestore triggers con `runTransaction`.
+### 5.2 Registro de nuevo usuario
 
-### Función 3: `actualizarVentasProducto` (llamada desde onPedidoCreated)
-- Puede ser una función separada o lógica dentro de la misma. Se encarga de actualizar el contador `ventas_totales` en cada producto.
+Pantalla de registro:
+- Campos: nombre completo, email, teléfono (opcional), contraseña (mínimo 6 caracteres), confirmar contraseña.
+- Cada campo con validación en tiempo real (mientras escribe, se muestra error si no cumple).
+- Botón "Registrarse" (rojo pastel). Al presionar, el controlador llama a `AuthService.signUp` y, si tiene éxito, crea el documento en Firestore en la colección `clientes` con los mismos datos y el campo `fecha_registro` automático, `tipo_membresia` = 'estandar', `activo` = true.
+- Después del registro, se inicia sesión automáticamente y se navega al home. Se muestra un mensaje flotante (Snackbar) de éxito: "¡Bienvenido a PetcoGestionApp!".
 
-**Despliegue de funciones:**
-- Se necesita instalar `firebase-tools` globalmente.
-- Ejecutar `firebase init functions` y elegir TypeScript.
-- Escribir las funciones en `functions/src/index.ts`.
-- Desplegar con `firebase deploy --only functions`.
+### 5.3 Inicio de sesión y recuperación de contraseña
 
----
+- **Login**: Email y contraseña. Botón "Entrar". Validación básica. Si las credenciales son incorrectas, se muestra un diálogo con mensaje de error. También hay un enlace "¿Olvidaste tu contraseña?" que lleva a la pantalla de recuperación.
+- **Recuperación**: Campo de email. Botón "Enviar enlace de restablecimiento". Se llama a `AuthService.resetPassword`. Firebase envía un correo al usuario. Se muestra un mensaje informativo: "Revisa tu bandeja de entrada". No es necesario manejar más lógica en la app, pues el flujo es externo.
 
-## 9. Gestión de Estado con Riverpod – Providers Detallados
+### 5.4 Página principal (home)
 
-Riverpod se usa para inyectar dependencias y gestionar el estado reactivo. Se crean los siguientes providers:
+Una vez autenticado, el home consta de:
+- **AppBar** con efecto glassmorphism: logo a la izquierda, campo de búsqueda (lupa) que al hacer clic lleva a la pantalla de búsqueda completa, icono de notificaciones (campana) y avatar del usuario (redondo). Al tocar el avatar, se abre un menú desplegable con opciones: Perfil, Mis compras, Mis citas, Favoritos, Cerrar sesión.
+- **Cuerpo desplazable (scroll vertical)**:
+  - Carrusel de banners (altura 180px en móvil, 220px en web). Cada banner es una imagen con texto superpuesto (ej. "20% en alimentos").
+  - Cuadrícula de categorías: máximo 6 categorías principales mostradas como círculos o tarjetas pequeñas con icono y nombre. Al hacer clic, se navega al catálogo de productos filtrado por esa categoría.
+  - Lista horizontal "Productos destacados": se obtienen los productos con campo `destacado = true` (campo extra que se puede agregar al modelo). Cada tarjeta muestra imagen, nombre, precio y un ícono de corazón para favoritos.
+  - Lista horizontal "Mascotas en adopción/venta": se obtienen las mascotas que tienen `en_adopcion = true` (campo adicional). Muestra nombre, especie, edad estimada.
+- **BottomNavigationBar** (móvil) con 5 elementos: Inicio, Catálogo (que a su vez permite alternar entre productos y mascotas), Carrito (con badge numérico de cantidad de items), Citas, Perfil. En web/escritorio, se usa un NavigationRail (barra lateral izquierda) o un Drawer, según convención.
 
-### Provider de repositorios (singleton)
-- `authRepositoryProvider` → retorna `AuthRepository` (concreto).
-- `clienteRepositoryProvider` → `ClienteRepository`.
-- `mascotaRepositoryProvider`
-- `productoRepositoryProvider`
-- `pedidoRepositoryProvider`
-- `citaRepositoryProvider`
-- `sucursalRepositoryProvider`
-- `inventarioRepositoryProvider`
+### 5.5 Catálogos (productos y mascotas)
 
-### Provider de casos de uso
-- `loginUseCaseProvider` → depende de `authRepositoryProvider`.
-- `registroUseCaseProvider`
-- `obtenerProductosUseCaseProvider`
-- `crearPedidoUseCaseProvider`
-- `agendarCitaUseCaseProvider`, etc.
+- **Productos**: Pantalla con un `TabBar` superior o dos pestañas: "Productos" y "Mascotas". Por defecto, "Productos". Muestra un grid de 2 columnas en móvil, 4 en web. Cada tarjeta incluye imagen, nombre, precio, botón de favorito, y un botón "+" (agregar al carrito) o un ícono de carrito. Filtros: un botón "Filtrar" (icono de embudo) que abre una hoja modal (bottom sheet) con opciones de categoría, especie objetivo (perro, gato, etc.), rango de precio, etc.
+- **Mascotas**: Grid similar, pero cada tarjeta muestra nombre, especie, raza, sexo (ícono), edad y un botón "Adoptar/Comprar" que lleva al detalle.
+- **Búsqueda avanzada**: Al escribir en el campo de búsqueda global (en AppBar), se muestra una pantalla con resultados en tiempo real (mientras escribe). Los resultados incluyen tanto productos como mascotas, agrupados por tipo. También hay filtros persistentes (ordenar por precio, relevancia).
 
-### StateNotifierProvider para estado global
-- `authNotifierProvider` → maneja `AuthState` (usuario autenticado, cargando, error). Escucha cambios en `auth_service` y refresca cliente.
-- `carritoNotifierProvider` → maneja lista de `ItemCarrito`. Métodos públicos: `agregarItem`, `removerItem`, `actualizarCantidad`, `vaciarCarrito`. Persiste en `shared_preferences` cada vez que cambia.
-- `filtrosProductosProvider` → simple `StateProvider` que guarda objeto con categoría seleccionada, especie, rango de precios, ordenamiento.
+### 5.6 Detalle de producto o mascota
 
-### FutureProvider/StreamProvider para datos asíncronos
-- `productosProvider` → `FutureProvider<List<Producto>>` que depende de `filtrosProductosProvider` y llama a `obtenerProductosUseCase` con paginación. Se puede combinar con `family` para páginas.
-- `misMascotasProvider` → `StreamProvider<List<Mascota>>` que escucha cambios en tiempo real (útil para actualizar interfaz automáticamente).
-- `misCitasProvider` → `FutureProvider` con opción de refrescar manualmente.
-- `sucursalesProvider` → `FutureProvider`.
+- **Producto**: Imagen grande (carrusel si hay múltiples), título, precio, selector de cantidad (stepper), descripción completa, especificaciones (tabla), botón "Añadir al carrito" (principal) y botón "Comprar ahora" (que añade y va al carrito). Botón de favoritos (corazón animado). Sección "Productos relacionados" (basado en categoría o especie).
+- **Mascota**: Muestra imagen, nombre, especie, raza, sexo, fecha de nacimiento (o edad), peso, notas médicas (si es visible para el comprador). Botón "Solicitar información" (envía un mensaje al administrador) y "Adoptar/Comprar" (inicia un proceso de compra que incluye formulario de adopción). No se añade al carrito normal; es un flujo aparte que genera una cita o un pedido especial.
 
-### Provider de conectividad
-- `connectivityStreamProvider` → `StreamProvider<bool>` que usa `connectivity_plus`.
+### 5.7 Carrito de compras
 
-**Ejemplo de uso en pantalla:**
-```dart
-// Concepto, no código
-final productos = ref.watch(productosProvider);
-productos.when(
-  data: (lista) => mostrar lista,
-  loading: () => mostrarLoading,
-  error: (err) => mostrarError,
-);
-```
+- Icono en AppBar muestra el número de items. Al entrar al carrito:
+  - Lista de productos: cada item tiene imagen, nombre, precio unitario, cantidad (con botones +/-), y un ícono de eliminar (papelera). Cambiar cantidad actualiza el subtotal en tiempo real.
+  - Resumen de compra: subtotal, impuestos (16%), descuento (si aplica un cupón), total.
+  - Botón "Aplicar cupón": campo de texto para ingresar código (simulado, se valida contra una lista en Firestore).
+  - Botón "Proceder a pagar": lleva a la pantalla de checkout donde se selecciona método de pago (solo simulación: efectivo, tarjeta de crédito, transferencia). Al confirmar, se crea el pedido en Firestore (colección `pedidos` y `detalles_pedido`), se vacía el carrito, se actualiza inventario (restar stock) y se muestra una pantalla de éxito con resumen del pedido.
+- El carrito persiste entre sesiones usando SharedPreferences o manteniendo el estado en el provider con almacenamiento local (HydratedBloc o similar). En modo prueba no se requiere sincronización entre dispositivos.
 
----
+### 5.8 Sistema de favoritos
 
-## 10. Navegación y Rutas – GoRouter Configuración
+- Desde cualquier tarjeta o detalle, el usuario puede presionar un corazón. Los favoritos se guardan en el documento del cliente en Firestore (campo `favoritos`, un array de strings con IDs de productos o mascotas). También se puede mantener una copia local en el provider para respuesta inmediata.
+- Pantalla de favoritos (accesible desde el perfil o el menú): muestra dos pestañas: "Productos favoritos" y "Mascotas favoritas". Misma disposición de grid que el catálogo.
 
-Se define `GoRouter` con rutas declarativas y protección de rutas.
+### 5.9 Perfil de usuario y historial de compras
 
-### Lista de rutas (nombres y paths):
-| Nombre | Path | Pantalla | Protección |
-|--------|------|----------|-------------|
-| `login` | `/login` | LoginScreen | Solo si no autenticado |
-| `register` | `/register` | RegistroScreen | Solo si no autenticado |
-| `home` | `/` | HomeScreen | Requiere autenticación |
-| `productos` | `/productos` | CatalogoProductosScreen | Requiere autenticación |
-| `productoDetalle` | `/productos/:id` | DetalleProductoScreen | Requiere autenticación |
-| `carrito` | `/carrito` | CarritoScreen | Requiere autenticación |
-| `checkout` | `/checkout` | CheckoutScreen | Requiere autenticación |
-| `mascotas` | `/mascotas` | MisMascotasScreen | Requiere autenticación |
-| `registrarMascota` | `/mascotas/registrar` | RegistrarMascotaScreen | Requiere autenticación |
-| `editarMascota` | `/mascotas/editar/:id` | EditarMascotaScreen | Requiere autenticación |
-| `citas` | `/citas` | MisCitasScreen | Requiere autenticación |
-| `agendarCita` | `/citas/agendar` | AgendarCitaScreen | Requiere autenticación |
-| `perfil` | `/perfil` | PerfilScreen | Requiere autenticación |
-| `editarPerfil` | `/perfil/editar` | EditarPerfilScreen | Requiere autenticación |
-| `pedidos` | `/pedidos` | MisPedidosScreen | Requiere autenticación |
-| `detallePedido` | `/pedidos/:id` | DetallePedidoScreen | Requiere autenticación |
-| `sucursales` | `/sucursales` | SucursalesScreen | Requiere autenticación |
+- **Perfil**: Datos personales (nombre, email, teléfono, fecha de nacimiento, tipo de membresía). Puede editarse (campos editables, botón "Guardar cambios"). Opción para cerrar sesión. También muestra la lista de mascotas registradas (con posibilidad de agregar nueva mascota, editar o eliminar). Las mascotas se asocian al cliente mediante `cliente_id`.
+- **Historial de compras**: Lista de pedidos realizados, cada uno muestra fecha, total, estado (entregado, pendiente, cancelado). Al hacer clic, se ven los detalles de ese pedido (productos, cantidades, precios).
 
-**Redirección global:**
-- Si el usuario no está autenticado y trata de acceder a cualquier ruta protegida, redirigir a `/login`.
-- Si el usuario ya autenticado e intenta ir a `/login` o `/register`, redirigir a `/home`.
+### 5.10 Agenda de citas veterinarias
 
-**Navegación anidada:** Se usa `ShellRoute` para mantener el `BottomNavigationBar` persistente en todas las pantallas principales (home, productos, mascotas, citas, perfil). Las rutas de detalle (producto, carrito, checkout) se muestran sin la barra inferior.
+- Acceso desde el bottom bar o drawer.
+- Pantalla principal de citas: un calendario visual (mes o semana) donde los días con citas aparecen con un punto de color rojo pastel. Al seleccionar un día, se muestra la lista de citas de ese día (tarjetas glassmorphism). También hay un botón flotante (FAB) para crear nueva cita.
+- **Nueva cita**: Formulario paso a paso:
+  1. Seleccionar mascota (de las registradas por el usuario, si no hay, se invita a registrar una).
+  2. Seleccionar servicio (se listan desde la colección `servicios` con precio y duración).
+  3. Seleccionar sucursal (se obtienen `sucursales` activas con mapa o dirección).
+  4. Seleccionar fecha y hora (solo horarios disponibles, se consulta `citas` existentes para esa sucursal y empleado).
+  5. Campo de notas opcional.
+  6. Botón "Agendar". Al guardar, se crea un documento en `citas` con estado "pendiente" (o "confirmada" si se requiere pago). Se envía una notificación local al usuario.
+- Las citas se pueden cancelar desde el detalle (cambiar estado a "cancelada") y se notifica al usuario.
+
+### 5.11 Panel administrativo básico
+
+Accesible solo para usuarios con `rol = 'admin'` (campo en el documento `clientes`). El panel está oculto en la navegación normal y se accede mediante una opción secreta o un enlace en el perfil. Contiene:
+
+- **Gestión de mascotas disponibles** (para adopción/venta): listado de todas las mascotas (no solo las de un cliente), con opción de agregar, editar (cambiar precio, disponibilidad, subir foto), eliminar (borrado lógico o físico). Campos iguales a la tabla `mascota`.
+- **Gestión de productos**: CRUD completo (nombre, precio, categoría, proveedor, stock inicial en sucursales, imagen). Al crear un producto, también se debe crear el registro en `inventario` para al menos una sucursal.
+- **Gestión de citas**: listado de todas las citas, filtrado por fecha, sucursal, empleado. Posibilidad de cambiar estado (confirmar, cancelar, completar) y asignar empleado.
+- **Gestión de inventario**: vista de stock por producto y sucursal, permitiendo ajustar cantidades (entradas por reposición).
+- **Reportes básicos** (solo en modo prueba): número de pedidos por día, productos más vendidos, citas atendidas.
+
+### 5.12 Manejo de estados de carga y errores
+
+- **Indicador de carga**: Mientras se espera una operación de Firestore (login, registro, carga de productos), se muestra un `LoadingIndicator` centrado (puede ser un `CircularProgressIndicator` con color azul pastel o una animación Lottie de una huella girando).
+- **Estados vacíos**: Cuando una lista no tiene datos (ej. carrito vacío, sin citas), se muestra un `EmptyStateWidget` con un icono grande, mensaje amigable ("Aún no tienes productos en tu carrito") y un botón para ir al catálogo.
+- **Errores generales**: Si ocurre un error inesperado (fallo de red, excepción en Firestore), se muestra un `ErrorWidget` con un mensaje claro y un botón "Reintentar". No se rompe la interfaz.
+- **Mensajes de éxito**: Snackbar en la parte inferior de la pantalla con fondo verde suave y texto blanco, duración de 3 segundos.
+
+### 5.13 Animaciones y transiciones
+
+- **Transiciones entre pantallas**: deslizamiento horizontal hacia la derecha (slide) para rutas normales, y fade para modales. En web, se usa la navegación por URL sin animación.
+- **Micro-interacciones**: 
+  - Botones: reducen su escala al 0.95 al presionarse, con un efecto de ripple en rojo pastel suave.
+  - Tarjetas: al pasar el mouse (web/escritorio) se elevan ligeramente (aumenta la sombra) y muestran un borde más brillante.
+  - Agregar al carrito: el ícono del carrito en AppBar hace una pequeña vibración y un badge cambia de número con animación de escala.
+  - Favoritos: el corazón late una vez y cambia de color de gris a rojo pastel.
+- **Animaciones de entrada**: Los elementos de las listas (tarjetas) aparecen con un desvanecimiento y un pequeño desplazamiento vertical (fade-up) usando `AnimatedList` o simplemente un `FadeTransition`.
 
 ---
 
-## 11. Diseño UX/UI – Especificaciones Completas de Glassmorphism, Colores, Tipografía, Animaciones
+## 6. Módulos específicos (ampliación)
 
-### 11.1 Paleta de colores (exacta)
-- **Azul pastel primario:** `#A3C6FF` (RGB: 163, 198, 255) → usado en botones principales, íconos activos, enlaces, bordes de inputs en focus.
-- **Azul pastel secundario:** `#B3D4FF` (RGB: 179, 212, 255) → usado en fondos de elementos seleccionados, hover de botones.
-- **Rojo pastel primario:** `#FFB3B3` (RGB: 255, 179, 179) → botones de peligro (cancelar, eliminar), indicadores de error, badges de descuento.
-- **Rojo pastel secundario:** `#FFC5C5` (RGB: 255, 197, 197) → fondos de advertencia suaves.
-- **Fondo general de la app:** `#F8FAFE` (gris azulado muy claro).
-- **Fondo glass:** blanco con opacidad 0.7 (`#FFFFFF` + 70% alpha) sobre imágenes de fondo o gradientes.
-- **Texto principal:** `#1C2E3A` (azul marino oscuro).
-- **Texto secundario:** `#5A6E7C` (gris azulado medio).
-- **Bordes y divisores:** `#D9E2EC` con opacidad 0.5.
+### 6.1 Pantalla de bienvenida (splash + presentación)
+- Muestra el logo y el nombre de la app con un efecto de desvanecimiento. Después de 2 segundos, decide la ruta según autenticación.
 
-### 11.2 Efecto Glassmorphism (especificación visual)
-- **Tarjetas (`GlassCard`):**
-  - `backgroundColor: Colors.white.withOpacity(0.7)`
-  - `borderRadius: BorderRadius.circular(24)`
-  - `border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5)`
-  - `boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 12, offset: Offset(0, 4))]`
-  - En elementos que se superponen a imágenes de fondo: usar `BackdropFilter` con `ImageFilter.blur(sigmaX: 8, sigmaY: 8)`.
+### 6.2 Inicio de sesión y registro (explicados arriba)
 
-- **Botones (`GlassButton`):**
-  - Fondo blanco semitransparente (opacity 0.8).
-  - Borde redondeado de 32px.
-  - Sombra suave al hover/press.
-  - Texto en azul pastel primario.
+### 6.3 Recuperación de contraseña
+- Solo un campo de email y un botón. Al enviar, se muestra un diálogo informativo sin validación adicional.
 
-- **AppBar:**
-  - Fondo transparente o con blur solo en scroll (usando `SliverAppBar` con `forceElevated`).
-  - Título con `Quicksand` bold, color texto principal.
+### 6.4 Página principal (home) con secciones dinámicas
+- Puede incluir un placeholder si no hay conexión, mostrando datos cacheados localmente (usando `persistenceEnabled` de Firestore).
 
-- **Inputs (`CampoFormularioGlass`):**
-  - Decoración: borde redondeado de 16px, relleno blanco opaco 0.6, label con `Poppins` regular, color azul pastel cuando está enfocado.
+### 6.5 Catálogo de mascotas con filtros por especie, tamaño, edad
+- Filtros en modal con sliders y checkboxes.
 
-### 11.3 Tipografía
-- **Títulos H1-H3:** `Quicksand` Bold, tamaños: 28, 24, 20. Espaciado entre letras: -0.5.
-- **Cuerpo de texto:** `Poppins` Regular, 14px (móvil) o 16px (web). Interlineado 1.5.
-- **Botones:** `Poppins` SemiBold, 16px, mayúsculas opcionales (texto en mayúscula solo para botones primarios).
-- **Textos pequeños (precios, fechas):** `Poppins` Light, 12px, color texto secundario.
+### 6.6 Catálogo de productos con filtros por categoría, precio, especie objetivo
+- Los filtros se aplican construyendo consultas dinámicas a Firestore (`.where()` encadenados). Es importante crear los índices necesarios.
 
-### 11.4 Animaciones y Microinteracciones (detalladas)
+### 6.7 Sistema de carrito de compras con persistencia local
+- Se almacena en `SharedPreferences` una lista serializada de IDs y cantidades, además del provider en memoria.
 
-| Elemento | Animación | Duración | Curva |
-|----------|-----------|----------|-------|
-| Transición entre pantallas | `SlideTransition` horizontal (derecha a izquierda) | 300ms | `Curves.easeInOut` |
-| Aparición de tarjetas en lista | Fade + escala (0.9 a 1) con stagger (cada 50ms) | 200ms por tarjeta | `Curves.easeOut` |
-| Botón "Agregar al carrito" | Efecto de onda (ripple) + ícono de check temporal | 150ms | `Curves.elasticOut` |
-| Producto añadido al carrito | Animación de vuelo: pequeña réplica del producto que se mueve hacia el icono del carrito en la AppBar | 400ms | `Curves.easeInOutCubic` |
-| Carga de datos (skeleton screens) | Pulsos de opacidad (shimmer) sobre placeholders | cíclico 1.5s | lineal |
-| Botón de carga (login) | Indicador circular reemplaza al texto | - | - |
-| Deslizar para eliminar (en carrito o mascotas) | Deslizamiento horizontal con fondo rojo pastel | 200ms | `Curves.easeOut` |
-| Refrescar lista (pull-to-refresh) | Animación nativa de `RefreshIndicator` | - | - |
+### 6.8 Sistema de favoritos sincronizado con Firestore
+- Al marcar/desmarcar, se actualiza el array en el documento del cliente. Se usa `FieldValue.arrayUnion` y `arrayRemove`.
 
-### 11.5 Disposición Responsiva
-- **Móvil (ancho < 600px):** Listas en columna, GridView con 2 columnas para productos, BottomNavigationBar.
-- **Tablet (600-1200px):** Grid de productos con 3 o 4 columnas, menú lateral opcional.
-- **Web/Desktop (>1200px):** Máximo ancho de contenido 1200px centrado, uso de `Center` y `ConstrainedBox`. Sidebar izquierdo para navegación principal.
+### 6.9 Perfil de usuario y gestión de mascotas propias
+- El usuario puede registrar una nueva mascota (solo los campos básicos) y editarla. No puede eliminar mascotas que tengan citas asociadas (validación en controlador).
+
+### 6.10 Historial de compras con detalle de cada pedido
+- Las consultas se hacen a `pedidos` donde `cliente_id == uid`, y luego se traen los `detalles_pedido` de cada pedido.
+
+### 6.11 Agenda de citas veterinarias con calendario interactivo
+- Se recomienda usar un paquete de calendario (como `table_calendar`) adaptado a los colores pastel.
+
+### 6.12 Panel administrativo con gestión CRUD de cada entidad
+- Cada pantalla de gestión muestra una tabla o lista de elementos, con botones de editar/eliminar/crear.
+
+### 6.13 Buscador y filtros avanzados con autocompletado
+- La búsqueda en Firestore se puede hacer con `isGreaterThanOrEqualTo` y `isLessThanOrEqualTo` para strings (búsqueda por prefijo). No se requiere búsqueda de texto completo.
+
+### 6.14 Notificaciones visuales dentro de la app (sin push)
+- Se usan Snackbars y diálogos modales. También notificaciones locales programadas para recordar citas (usando `flutter_local_notifications`).
+
+### 6.15 Manejo de estados de carga y errores (explicado)
 
 ---
 
-## 12. Pantallas y Flujos – Explicación Paso a Paso de Cada Interfaz
+## 7. Dependencias conceptuales (sin código)
 
-### 12.1 Autenticación
+Para implementar todas las funcionalidades descritas, el proyecto Flutter requiere las siguientes dependencias (solo se explica su función, no se dan comandos de instalación):
 
-**LoginScreen:**
-- Campo email (con ícono de sobre) validación en tiempo real (formato email).
-- Campo contraseña (ícono de candado, toggle mostrar/ocultar).
-- Botón "Iniciar sesión" (glass). Al presionar:
-  - Mostrar indicador de carga.
-  - Invocar `loginUseCase`.
-  - Si error, mostrar SnackBar con mensaje (ej. "Credenciales incorrectas").
-  - Si éxito, redirigir a `/home`.
-- Enlace "¿Olvidaste tu contraseña?" (envía correo de restablecimiento usando `sendPasswordResetEmail`).
-- Enlace "Registrarse" → navegar a `/register`.
-
-**RegistroScreen (2 pasos):**
-- Paso 1: email, contraseña (con confirmación). Validar que coincidan.
-- Paso 2: nombre completo, teléfono (con máscara), dirección, fecha de nacimiento (date picker). Opcional: foto de perfil.
-- Botón final "Crear cuenta". Llamar a `registerUseCase`. Si éxito, autenticar automáticamente y redirigir a home.
-
-### 12.2 Home (Dashboard)
-
-**Estructura visual (de arriba a abajo):**
-- AppBar con saludo "¡Hola, [nombre]!" y avatar (si tiene foto). Botón de carrito con badge de cantidad de items.
-- Carrusel de promociones: imágenes de 16:9, redondeadas, con indicador de página (smooth_page_indicator). Las imágenes se obtienen de Storage (carpeta `promociones/`).
-- Sección "Servicios rápidos": 3 botones grandes con íconos (Baño, Corte, Consulta). Cada uno al presionar abre `AgendarCitaScreen` con el servicio preseleccionado.
-- Sección "Productos más vendidos": título, lista horizontal de `ProductCard` (imagen, nombre, precio). Se obtienen de `productos` ordenado por `ventas_totales` descendente (límite 10).
-- Sección "Sucursal más cercana": si el usuario dio permiso de ubicación, mostrar la sucursal más cercana (distancia calculada con `geolocator`) y un botón "Ver sucursales".
-- Botón flotante de ayuda (chat simulado, opcional).
-
-### 12.3 Catálogo de Productos y Búsqueda
-
-**CatalogoProductosScreen:**
-- SliverAppBar colapsable con campo de búsqueda (debounce de 500ms).
-- Filtros: barra de chips horizontales (Categorías, Especie, Precio). Al tocar, se abre un modal inferior (`showModalBottomSheet`) con opciones.
-- GridView de productos (2 columnas en móvil, 4 en web).
-- Paginación infinita (scroll): cuando se llega al final, carga siguiente página usando `startAfter` del último documento.
-- Cada tarjeta: imagen, nombre, precio, botón "+" que agrega al carrito (con animación de vuelo).
-- Botón flotante "Filtros" (en móvil) que abre el mismo modal.
-
-**Búsqueda:** Mientras se escribe, se ejecuta una consulta a Firestore con `where` sobre campo `nombre` usando `array-contains`? No se puede, Firestore no permite búsqueda parcial. Alternativa: usar `isGreaterThanOrEqualTo` y `isLessThan` para prefijos, o integrar Algolia (más complejo). Para proyecto personal, se puede buscar solo por coincidencia exacta de prefijo (ej. "ali" encuentra "Alimento"). Esto se hace con `startAt(query)` y `endAt(query + '\uf8ff')`.
-
-### 12.4 Detalle de Producto y Carrito
-
-**DetalleProductoScreen:**
-- Imagen principal (Hero animada) + galería de imágenes (si hay múltiples).
-- Título, precio, descripción.
-- Selector de cantidad (botones + y -) con límite de stock (consulta a inventario para sucursal seleccionada).
-- Dropdown para seleccionar sucursal (solo las que tienen stock > 0). Por defecto, la sucursal guardada en preferencias.
-- Botones: "Agregar al carrito" (actualiza carritoProvider) y "Comprar ahora" (lleva a checkout con ese producto).
-- Sección de "Productos relacionados" (misma categoría).
-
-**CarritoScreen:**
-- Lista de `ItemCarrito` con imagen, nombre, cantidad (stepper), precio unitario, subtotal por item.
-- Botón eliminar (ícono basura) con diálogo de confirmación.
-- Resumen: subtotal, impuesto (16% o fijo), descuento (si hay cupón), total.
-- Botón "Continuar comprando" (vuelve a catálogo) y "Proceder al pago" (navega a `/checkout`).
-
-### 12.5 Proceso de Checkout y Pedidos
-
-**CheckoutScreen (pasos):**
-1. **Confirmar sucursal:** Mapa o lista, se muestra la sucursal seleccionada en el carrito. Puede cambiarse.
-2. **Método de pago:** Dos opciones: "Efectivo en tienda" o "Tarjeta de crédito (simulado)". Para tarjeta, se muestran campos ficticios (solo para demo, no se procesa realmente).
-3. **Resumen final:** Lista de productos, total, dirección de la sucursal.
-4. **Botón "Confirmar pedido":** 
-   - Valida stock nuevamente (llamando a `verificarStockUseCase`).
-   - Crea el pedido en Firestore (documento `pedidos` y subcolección `detalles_pedido`).
-   - La Cloud Function `onPedidoCreated` se encarga del resto.
-   - Limpia el carrito local.
-   - Muestra pantalla de éxito con número de pedido y botón "Ver mis pedidos".
-
-### 12.6 Gestión de Mascotas
-
-**MisMascotasScreen:**
-- Lista de tarjetas. Cada tarjeta muestra foto (placeholder si no tiene), nombre, especie, raza. Botones: editar (lápiz) y eliminar (basura).
-- Botón flotante + que abre `RegistrarMascotaScreen`.
-- Al eliminar, diálogo de confirmación; si acepta, elimina de Firestore y opcionalmente la imagen de Storage.
-
-**RegistrarMascotaScreen:**
-- Formulario con:
-  - Nombre (requerido)
-  - Especie (dropdown: perro, gato, conejo, ave, etc.)
-  - Raza (TextField)
-  - Sexo (3 botones: Macho, Hembra, Neutro)
-  - Fecha de nacimiento (DatePicker, máximo hoy, mínimo hace 30 años)
-  - Peso (double, con dos decimales)
-  - Notas médicas (textarea)
-  - Imagen: botón para seleccionar de galería/cámara, vista previa.
-- Botón "Guardar": llama a `registrarMascotaUseCase` que sube imagen a Storage (si la hay) y guarda en Firestore.
-
-### 12.7 Agenda de Citas Veterinarias
-
-**AgendarCitaScreen (stepper de 4 pasos):**
-1. **Seleccionar mascota:** Lista de las mascotas del cliente (usando `misMascotasProvider`). Si no tiene, redirigir a registrar mascota.
-2. **Seleccionar servicio:** Lista de servicios activos de Firestore, muestra nombre, precio, duración.
-3. **Seleccionar sucursal:** Mapa o lista de sucursales.
-4. **Seleccionar fecha y hora:** 
-   - Calendario (solo días con disponibilidad, usando función auxiliar).
-   - Horarios disponibles: se consulta a Firestore las citas ya existentes en esa sucursal y fecha, y se calculan los slots libres basados en duración del servicio (ej. cada 30 minutos).
-5. **Confirmación:** Resumen, botón "Agendar". Llama a `agendarCitaUseCase`. La Cloud Function verificará conflictos y asignará empleado.
-
-**MisCitasScreen:**
-- TabBar: Próximas (estados: pendiente, confirmada) y Pasadas (completada, cancelada).
-- Cada cita en tarjeta: servicio, mascota, sucursal, fecha/hora, estado (con color: azul para pendiente, verde para confirmada, rojo para cancelada).
-- Botón "Cancelar" en citas próximas (solo si fecha_hora > ahora + 24h). Muestra diálogo de confirmación.
-
-### 12.8 Perfil y Configuración
-
-**PerfilScreen:**
-- Header circular con foto (Avatar), botón para cambiar foto (abre image_picker).
-- Campos de solo lectura o editables (nombre, email, teléfono, dirección, fecha nacimiento). Botón "Editar" que lleva a `EditarPerfilScreen`.
-- Sección "Membresía": muestra tipo (estándar/premium) y quizás beneficios (no funcional por ahora).
-- Botón "Cerrar sesión": llama a `logoutUseCase` y redirige a login.
-- Botón "Eliminar cuenta": solo para desarrollo, elimina el usuario de Auth y su documento en Firestore.
-
-**EditarPerfilScreen:**
-- Formulario con campos editables (excepto email). Valida teléfono, dirección, etc.
-- Botón "Guardar cambios" actualiza Firestore.
-
-### 12.9 Historial de Pedidos
-
-**MisPedidosScreen:**
-- Lista de pedidos (FutureProvider) ordenados por fecha descendente.
-- Cada tarjeta: número (primeros 8 caracteres del ID), total, fecha, estado (badge con color según estado).
-- Al tocar, navega a `DetallePedidoScreen` con el ID.
-
-**DetallePedidoScreen:**
-- Muestra: fecha, sucursal, método de pago.
-- Tabla de productos: nombre, cantidad, precio unitario, subtotal.
-- Totales (subtotal, impuesto, descuento, total).
-- Estado y línea de tiempo (pendiente -> pagado -> enviado -> entregado) con indicadores visuales.
-
-### 12.10 Sucursales y Mapa
-
-**SucursalesScreen:**
-- Split view (web/tablet): mapa a la izquierda, lista a la derecha. En móvil: pestañas o modal.
-- Mapa con marcadores en cada sucursal (usando `google_maps_flutter`). Al tocar marcador, se resalta la tarjeta en lista.
-- Lista de sucursales: cada tarjeta muestra nombre, dirección, horario, teléfono, botón "Seleccionar" (para usarla en carrito o cita) y botón "Ver horarios" (modal).
-- Botón "Usar mi ubicación" centra el mapa en la posición actual.
+- **Firebase Core**: Permite conectar la app con el proyecto Firebase `PetcoGestionApp`. Es la base para todos los demás servicios de Firebase.
+- **Firebase Authentication**: Gestiona el registro, inicio de sesión y restablecimiento de contraseña utilizando correo/contraseña. También mantiene la sesión activa.
+- **Cloud Firestore**: Base de datos NoSQL en tiempo real. Se usa para almacenar y sincronizar toda la información de clientes, mascotas, productos, citas, pedidos, etc. Las colecciones se organizan según la adaptación de las tablas SQL.
+- **Firebase Storage**: Almacena las imágenes subidas por el administrador (fotos de mascotas, productos, logos de sucursales). Las URLs resultantes se guardan en los documentos de Firestore.
+- **Provider o Riverpod**: Manejo de estado reactivo y eficiente. Se usa para compartir el estado del carrito, favoritos, autenticación, tema, etc., entre múltiples pantallas sin necesidad de pasar parámetros manualmente. Riverpod es más moderno y seguro en tiempo de compilación.
+- **Go Router**: Navegación declarativa con soporte para rutas anidadas, transiciones personalizadas y deep linking. Es ideal para multiplataforma porque maneja URLs en web y navegación nativa en móvil.
+- **Flutter Local Notifications**: Permite mostrar notificaciones en el dispositivo a horas programadas (ej. recordatorio de cita 1 hora antes). No requiere conexión a internet.
+- **Shared Preferences**: Almacenamiento local de pares clave-valor. Se usa para guardar el estado del carrito cuando la app se cierra, o preferencias del usuario (tema oscuro, etc.).
+- **Image Picker**: Permite al usuario seleccionar imágenes de la galería o tomar fotos con la cámara para subir foto de perfil o agregar fotos a mascotas (en modo administrador).
+- **Lottie**: Reproduce animaciones en formato JSON de alta calidad, ideales para pantallas de carga, éxito o error.
+- **Intl**: Internacionalización y formateo de fechas, números y monedas. Se usa para mostrar precios en formato local y fechas legibles.
+- **Table Calendar**: Widget de calendario personalizable para la gestión de citas. Permite seleccionar fechas, resaltar días con eventos, etc.
+- **Google Maps Flutter (opcional)**: Si se desea mostrar la ubicación de las sucursales en un mapa interactivo. Requiere clave de API.
+- **Flutter Spinkit**: Colección de indicadores de carga animados (spinners) con varios estilos, que se pueden ajustar a los colores pastel.
+- **Equatable**: Facilita la comparación de objetos en providers y reduce reconstrucciones innecesarias de widgets.
+- **Firebase UI Auth (opcional)**: Para acelerar la implementación de pantallas de login/registro con diseño predefinido, pero dado que se requiere diseño personalizado con glassmorphism, no se recomienda.
 
 ---
 
-## 13. Manejo de Imágenes – Carga, Optimización y Almacenamiento en Firebase Storage
+## 8. Gestión de assets y recursos visuales
 
-- **Compresión previa:** Usar el paquete `image_picker` para obtener archivo, luego `flutter_image_compress` para reducir tamaño (máximo 1024x1024 píxeles, calidad 80%). Esto ahorra ancho de banda y costos.
-- **Subida a Storage:** 
-  - Ruta: `mascotas/{cliente_id}/{nombre_archivo}.jpg` 
-  - Se genera nombre único con `uuid` para evitar colisiones.
-  - `FirebaseStorage` método `putFile` con `SettableMetadata` (contentType: image/jpeg).
-  - Obtener URL de descarga con `getDownloadURL()`.
-- **Caché:** Usar `CachedNetworkImage` (paquete `cached_network_image`) para mostrar imágenes con caché local y placeholder mientras carga.
-- **Eliminación:** Al eliminar mascota o producto (si es admin), también eliminar la imagen de Storage.
+### 8.1 Organización en la carpeta `assets/`
 
----
+- **images/**: 
+  - `logo.png` (versión horizontal y solo icono).
+  - `placeholder.png` (imagen genérica para productos sin foto).
+  - `banner_home_1.jpg`, `banner_home_2.jpg` (banners promocionales).
+  - `category_dog.png`, `category_cat.png`, etc. (íconos para las categorías).
+  - `avatar_default.png` (para usuarios sin foto).
+  - Fotos de muestra para mascotas (para pruebas).
+- **icons/**: Puede contener una fuente de iconos personalizada (`.ttf`) o simplemente usar Iconos de Material Design (que ya vienen con Flutter). Para mantener coherencia, se usarán principalmente iconos de `Icons` con el peso `outlined` o `rounded`.
+- **fonts/**: Archivos `Poppins-Regular.ttf`, `Poppins-Medium.ttf`, etc. Registrados en `pubspec.yaml`. La familia tipográfica se aplica globalmente en el `ThemeData`.
+- **animations/**: Archivos JSON de Lottie como `loading_animation.json`, `success_check.json`, `error_animation.json`.
 
-## 14. Persistencia Local – SharedPreferences para Carrito y Preferencias
+### 8.2 Coherencia visual
 
-- **Carrito:** Guardar lista de `ItemCarrito` como JSON string en clave `cart_items`. Cada item: `{productoId, nombre, imagenUrl, precio, cantidad}`. Al iniciar app, se carga.
-- **Preferencias:** 
-  - `selected_sucursal_id`: última sucursal usada para checkout.
-  - `last_email`: recordar email en login (opcional).
-  - `onboarding_done`: bool para mostrar primera vez un onboarding.
-- Implementación: una clase `LocalStorageService` con métodos `saveCart`, `loadCart`, `savePreference`, etc.
+- Todas las imágenes deben tener bordes redondeados (radio 12px por defecto).
+- Los iconos de la barra inferior y AppBar se usan con tamaño 24px y color `#1E2A3A` (texto principal), excepto el icono activo que toma el color rojo pastel.
+- Los placeholders son imágenes vectoriales o ilustraciones de mascotas en tonos pastel.
+- Los logos deben incluir versiones para modo claro y oscuro (aunque no se use modo oscuro, se prevé).
 
----
+### 8.3 Optimización
 
-## 15. Manejo de Errores y Estados de Carga – Estrategia Global
-
-- **Cada provider** maneja `AsyncValue` (data, loading, error). En UI se usa `when`.
-- **SnackBar global:** Se usa `ScaffoldMessenger` con una key global definida en `MyApp`.
-- **Errores comunes y mensajes amigables:**
-  - `NetworkError`: "No hay conexión a internet. Revisa tu red."
-  - `PermissionDenied`: "No tienes permiso para realizar esta acción."
-  - `StockInsuficiente`: "Lo sentimos, no hay suficiente stock de [producto] en la sucursal seleccionada."
-  - `HorarioOcupado`: "La cita en ese horario ya está ocupada. Por favor elige otra hora."
-- **Logger:** En desarrollo, imprimir errores detallados con `logger.e(exception, stackTrace)`.
+- Las imágenes subidas a Firebase Storage deben ser comprimidas antes de la subida (usando paquete `image_picker` con calidad al 70%).
+- En assets locales, se prefiere formato WebP para reducir tamaño.
+- Las animaciones Lottie no deben superar los 200 KB para mantener rendimiento.
 
 ---
 
-## 16. Pruebas Manuales – Escenarios y Casos de Uso a Verificar
+## 9. Consideraciones multiplataforma
 
-| ID | Escenario | Pasos | Resultado esperado |
-|----|-----------|-------|---------------------|
-| T1 | Registro exitoso | Completar formulario válido | Usuario creado, redirige a home, aparece documento en Firestore `clientes` |
-| T2 | Login incorrecto | Email válido, contraseña errónea | SnackBar "Credenciales incorrectas" |
-| T3 | Agregar producto al carrito | Desde catálogo, tocar "+" | Carrito badge incrementa, item aparece en carrito | 
-| T4 | Stock insuficiente | Intentar comprar más cantidad de la disponible | Mensaje de error, no permite checkout |
-| T5 | Crear pedido | Carrito con items, seleccionar sucursal y pago | Pedido creado, stock reduce, aparece en historial |
-| T6 | Agendar cita conflicto | Dos citas misma sucursal misma hora | La segunda cita se rechaza o marca conflicto |
-| T7 | Cancelar cita | Desde mis citas, botón cancelar | Estado cambia a cancelada, no se puede agendar en ese horario |
-| T8 | Subir foto de mascota | Seleccionar imagen, guardar | Imagen subida a Storage, URL guardada en Firestore |
-| T9 | Sin conexión | Desactivar WiFi, abrir app | Indicador offline, datos cacheados (si se implementó), no se pueden nuevas compras |
-| T10 | Cambiar sucursal | En checkout, cambiar sucursal | Se actualiza disponibilidad de stock y horarios de cita |
+### 9.1 Responsive design
 
----
+- Se utiliza `MediaQuery` y `LayoutBuilder` en cada pantalla para adaptar columnas, tamaños de fuente y márgenes.
+- En móvil (ancho < 600px): bottom navigation bar visible, grid de 2 columnas, textos ligeramente más pequeños.
+- En tablet (600px - 1200px): grid de 3 o 4 columnas, se puede usar un `NavigationRail` en lugar de bottom bar.
+- En web/escritorio (>1200px): grid de 5 o 6 columnas, drawer lateral que se puede colapsar, y el contenido centrado con un ancho máximo de 1200px.
 
-## 17. Configuración Multiplataforma – Android, iOS, Web, Windows
+### 9.2 Adaptación a Windows, Android, iOS, Web
 
-### Android
-- `minSdkVersion: 21`
-- `compileSdkVersion: 34`
-- Permisos: internet, acceso a galería/cámara, ubicación (opcional).
-- Generar `google-services.json` y colocarlo en `android/app/`.
+- **Web**: Se debe evitar el uso de `dart:io` para funcionalidades que no estén soportadas. La selección de imágenes se hace con `image_picker` que funciona en web usando HTML input. La navegación con `go_router` maneja las URLs correctamente.
+- **Windows**: Las notificaciones locales pueden requerir configuración adicional; en modo prueba se pueden deshabilitar o usar un stub.
+- **iOS/Android**: Todas las funcionalidades (cámara, notificaciones, almacenamiento) funcionan sin problemas. Se debe solicitar permiso para notificaciones al iniciar la app (solo una vez).
+- **Diferencias de entrada**: En web/escritorio, los botones tienen efectos de hover y focus; en móvil, se usan gestos táctiles con feedback háptico opcional.
 
-### iOS
-- `minimum deployment target: 11.0`
-- Agregar permisos en `ios/Runner/Info.plist`: `NSPhotoLibraryUsageDescription`, `NSCameraUsageDescription`, `NSLocationWhenInUseUsageDescription`.
-- `GoogleService-Info.plist` en `ios/Runner/`.
+### 9.3 Pruebas en modo desarrollo
 
-### Web
-- Configurar en Firebase Hosting (opcional). Para desarrollo, usar `web/index.html` con los scripts de Firebase SDK (o usar `firebase_options.dart`).
-- Habilitar CORS en Storage (reglas).
-- El efecto glassmorphism con `BackdropFilter` puede fallar en algunos navegadores; tener fallback de color sólido.
-
-### Windows
-- Depende de `firebase_core` con soporte experimental. Se necesita la DLL de Firebase C++. En la práctica, para proyecto personal se puede omitir Windows o usar la misma configuración web dentro de un contenedor.
-
-**Comandos de ejecución:**
-- `flutter run -d chrome` (web)
-- `flutter run -d windows` (Windows)
-- `flutter run -d android` (dispositivo físico o emulador)
+- Para probar en web, ejecutar con `flutter run -d chrome` y usar las herramientas de desarrollo de Firebase Emulator Suite (opcional) para simular Firestore localmente.
+- En dispositivos físicos, asegurarse de que el archivo `google-services.json` (Android) y `GoogleService-Info.plist` (iOS) estén correctamente colocados y que el proyecto Firebase tenga los SHA-1 registrados para Android.
 
 ---
 
-## 18. Despliegue Local y Variables de Entorno
+#Prompt:
 
-- Crear archivo `.env` en la raíz (ignorado por git) con:
-```
-FIREBASE_API_KEY=XXXX
-FIREBASE_APP_ID=XXXX
-FIREBASE_PROJECT_ID=XXXX
-FIREBASE_MESSAGING_SENDER_ID=XXXX
-FIREBASE_STORAGE_BUCKET=XXXX
-FIREBASE_AUTH_DOMAIN=XXXX
-```
-- Cargar con `flutter_dotenv` en `main.dart` antes de `runApp`.
-- Usar `DotEnv().env['FIREBASE_API_KEY']` para configurar `FirebaseOptions` si no se usa `firebase_options.dart`. Pero es más sencillo usar el archivo generado.
-
----
-
-## 19. Lista de Verificación Final (Checklist)
-
-- [ ] Configuración de proyecto Firebase y apps registradas.
-- [ ] Archivos de configuración descargados e integrados.
-- [ ] Ejecución de `flutterfire configure`.
-- [ ] Estructura de carpetas creada completamente.
-- [ ] Dependencias añadidas en `pubspec.yaml` y ejecutado `flutter pub get`.
-- [ ] Modelos y repositorios implementados (sin código, pero planificados).
-- [ ] Casos de uso definidos para cada entidad.
-- [ ] Providers de Riverpod configurados.
-- [ ] Reglas de Firestore escritas y desplegadas (modo prueba inicial, luego reforzadas).
-- [ ] Índices compuestos creados (automática o manualmente).
-- [ ] Cloud Functions escritas y desplegadas.
-- [ ] Pantallas diseñadas con glassmorphism (widgets reutilizables).
-- [ ] Rutas GoRouter definidas con protección.
-- [ ] Persistencia local para carrito.
-- [ ] Pruebas manuales de todos los flujos críticos.
-- [ ] Verificación del correcto funcionamiento en las cuatro plataformas (al menos Android y Web).
-
----
-
-Este plan extremadamente detallado cubre todos los aspectos necesarios para la implementación de la app Petco, sin dejar nada implícito. Cada componente, archivo, regla y flujo ha sido descrito con precisión para que puedas llevarlo a la práctica sin ambigüedades.
-
-#PROMPT:
 Antigravity
 Flutter multiplataforma para Android, Web, Windows e iOS.
 
@@ -1101,3 +648,30 @@ Muy importante:
 * No omitas detalles técnicos importantes.
 * Explica todo como si fuera documentación profesional para construir el proyecto completo.
 * Cada sección debe ser amplia, específica y profundamente detallada.
+Además, toma en cuenta que el proyecto ya existe dentro de Firebase Console y que el nombre exacto del proyecto es **PetcoGestionApp**. La aplicación utilizará específicamente **Cloud Firestore** como base de datos principal para almacenamiento y sincronización de información en tiempo real. Describe detalladamente cómo debe integrarse este proyecto de Firebase dentro de la arquitectura Flutter y cómo debería organizarse la comunicación entre la aplicación y Firestore para mantener una estructura clara, eficiente y fácil de mantener.
+
+Es importante considerar que el proyecto de Firebase se encuentra actualmente en **modo prueba** y no en estado de producción. Debido a esto, el documento debe contemplar configuraciones y flujos adecuados para un entorno de desarrollo académico y personal, evitando enfoques empresariales avanzados o configuraciones innecesarias de despliegue profesional. Explica cómo afecta el modo prueba al comportamiento de Firestore, autenticación y acceso a datos, así como las precauciones básicas que deben considerarse durante el desarrollo para evitar errores comunes relacionados con permisos o sincronización.
+
+También describe ampliamente cómo debería estructurarse la conexión entre Flutter y el proyecto **PetcoGestionApp**, incluyendo:
+
+* Organización lógica de la configuración de Firebase dentro del proyecto Flutter.
+* Manejo de inicialización de Firebase al arrancar la aplicación.
+* Separación de responsabilidades entre la interfaz y las operaciones de Firestore.
+* Estrategias recomendadas para leer, escribir, actualizar y eliminar datos de Firestore.
+* Flujo esperado de autenticación y persistencia de sesión.
+* Manejo de errores relacionados con conexión, permisos o datos inexistentes.
+* Uso de colecciones y documentos dentro de Firestore para mantener ordenada la información.
+* Estrategias de nomenclatura para colecciones relacionadas con usuarios, mascotas, productos, citas veterinarias, compras y favoritos.
+* Organización visual y lógica del backend para que sea fácil de entender y mantener dentro de Firebase Console.
+
+Aclara también que, al ser un proyecto en modo prueba y de carácter personal/académico, no es necesario implementar:
+
+* Infraestructura empresarial.
+* Escalabilidad avanzada.
+* Microservicios.
+* Configuraciones complejas de seguridad empresarial.
+* Analytics avanzados.
+* Integraciones de monetización.
+* Sistemas externos de administración.
+
+Que la estructura de carpetas solo contenga carpetas y archivos, no explicación (la explicación la quiero fuera de la estructura de carpetas)
