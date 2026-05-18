@@ -12,17 +12,22 @@
 
 ## Etapa 4  de mi proyecto <br>
 
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/ce4b9567-2112-44b8-9fa6-c56f06a6b718" />
 
 ## Etapa 5  de mi proyecto <br>
+
 
 
 ## Etapa 6  de mi proyecto <br>
 
 
+
 ## Etapa 7  de mi proyecto <br>
 
 
+
 ## Etapa 8 de mi proyecto <br>
+
 
 
 ## Etapa 9  de mi proyecto <br>
