@@ -16,7 +16,7 @@
 
 ## Etapa 5  de mi proyecto <br>
 
-
+<img width="864" height="1821" alt="image" src="https://github.com/user-attachments/assets/ddb2691b-d326-474e-b2cb-7c2eea76ab97" />
 
 ## Etapa 6  de mi proyecto <br>
 
