@@ -25,11 +25,13 @@
 
 ## Etapa 7  de mi proyecto <br>
 
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/adb24c14-d765-4c7b-91e8-8925d9d7de7e" />
 
 
 ## Etapa 8 de mi proyecto <br>
 
-
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/f047f383-fc5a-42f6-9f7c-d2667c68fcfd" />
 
 ## Etapa 9  de mi proyecto <br>
 
+<img width="635" height="953" alt="image" src="https://github.com/user-attachments/assets/58961651-9151-47e4-bd37-c3fc5b4eae5c" />
