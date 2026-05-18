@@ -20,6 +20,7 @@
 
 ## Etapa 6  de mi proyecto <br>
 
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/d82fd636-8a36-48f8-b3cb-29b3d518cfbb" />
 
 
 ## Etapa 7  de mi proyecto <br>
