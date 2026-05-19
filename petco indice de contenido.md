@@ -23,3 +23,5 @@
 <img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/0a13d185-8d25-48cf-8982-a494f83f95af" />
 
 ## Conclusiones 
+
+<img width="1024" height="1536" alt="image" src="https://github.com/user-attachments/assets/611a4d26-fbc4-4c31-a41f-fb2f7d03d839" />
